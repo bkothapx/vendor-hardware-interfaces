@@ -1,0 +1,27 @@
+From e9dffe7f4f92bc7c69fdd756102fb8c717a31376 Mon Sep 17 00:00:00 2001
+From: rramakax <rohitx.kant@intel.com>
+Date: Mon, 24 Aug 2020 18:36:00 +0530
+Subject: [PATCH] Select the filenames encryption mode as aes-256-cts To
+ support adoptable Storage
+
+Change-Id: I178de966d2191c0bd07cfa13eed57d77e77fe121
+Tracked-On: OAM-92322
+Signed-off-by: rramakax <rohitx.kant@intel.com>
+---
+ groups/device-specific/caas/caas.mk | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/groups/device-specific/caas/caas.mk b/groups/device-specific/caas/caas.mk
+index 637a131..427a673 100644
+--- a/groups/device-specific/caas/caas.mk
++++ b/groups/device-specific/caas/caas.mk
+@@ -65,3 +65,6 @@ PRODUCT_SHIPPING_API_LEVEL := 28
+ {{#ota-update}}
+ PRODUCT_SHIPPING_API_LEVEL := 27
+ {{/ota-update}}
++#Adoptable Storage encryption support for CTS
++PRODUCT_PROPERTY_OVERRIDES += \
++        ro.crypto.volume.filenames_mode=aes-256-cts
+-- 
+1.9.1
+
