@@ -1,0 +1,31 @@
+From 9293acb2897a702ecd7d8034f73af0e820e6dfb4 Mon Sep 17 00:00:00 2001
+From: rramakax <rohitx.kant@intel.com>
+Date: Wed, 26 Aug 2020 14:31:35 +0530
+Subject: [PATCH] Fix for CtsTelephonyTestcases.
+
+CTS telephone test cases are failing.
+Disable the ril flag to disable telephony feature
+to pass the telephony test cases.
+
+Change-Id: Ie8e2e2a36cbc8ecf36aec423659924d9b37c8e70
+Tracked-On: OAM-91766
+Signed-off-by: rramakax <rohitx.kant@intel.com>
+---
+ caas/mixins.spec | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/caas/mixins.spec b/caas/mixins.spec
+index 2f4ac94..aab02b1 100755
+--- a/caas/mixins.spec
++++ b/caas/mixins.spec
+@@ -75,6 +75,7 @@ debugfs: true
+ disk-encryption: true
+ factory-scripts: true
+ filesystem_config: common
++telephony: false
+ load_modules: true
+ gptbuild: true(size=32G,generate_craff=false,compress_gptimage=true)
+ dynamic-partitions: true(super_img_in_flashzip=true)
+-- 
+1.9.1
+
