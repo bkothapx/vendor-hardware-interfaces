@@ -1,0 +1,41 @@
+From 3e6c42225b8f44489a74cb06e3fc524feb7a6d51 Mon Sep 17 00:00:00 2001
+From: Colin Xu <colin.xu@intel.com>
+Date: Wed, 26 Aug 2020 15:42:59 +0800
+Subject: [PATCH] Add VirIO GPIO config in mixins.
+
+Change-Id: Ifaeaabe6f313fbd3f7e9afd3139ea014fd1a3e4f
+Tracked-On: OAM-92267
+Signed-off-by: Colin Xu <colin.xu@intel.com>
+
+diff --git a/groups/kernel/gmin64/config-lts/lts2019-chromium/caas_diffconfig b/groups/kernel/gmin64/config-lts/lts2019-chromium/caas_diffconfig
+index 950461252ee8..286ea75f4993 100644
+--- a/groups/kernel/gmin64/config-lts/lts2019-chromium/caas_diffconfig
++++ b/groups/kernel/gmin64/config-lts/lts2019-chromium/caas_diffconfig
+@@ -26,3 +26,5 @@ CONFIG_MOUSE_PS2=y
+ CONFIG_MOUSE_PS2_VMMOUSE=y
+ CONFIG_DRM_QXL=y
+ CONFIG_OVERLAY_FS=y
++CONFIG_GPIO_GENERIC=y
++CONFIG_GPIO_VIRTIO=y
+diff --git a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+index 6eddaf3b9cb5..1b22559f4fd0 100644
+--- a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
++++ b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+@@ -2949,6 +2949,7 @@ CONFIG_GPIO_ACPI=y
+ CONFIG_GPIOLIB_IRQCHIP=y
+ # CONFIG_DEBUG_GPIO is not set
+ CONFIG_GPIO_SYSFS=y
++CONFIG_GPIO_GENERIC=y
+
+ #
+ # Memory mapped GPIO drivers
+@@ -2963,6 +2964,7 @@ CONFIG_GPIO_SYSFS=y
+ # CONFIG_GPIO_VX855 is not set
+ # CONFIG_GPIO_XILINX is not set
+ # CONFIG_GPIO_AMD_FCH is not set
++CONFIG_GPIO_VIRTIO=y
+ # end of Memory mapped GPIO drivers
+
+ #
+--
+2.28.0
