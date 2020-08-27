@@ -1,0 +1,2269 @@
+From e8ffca311d52050852bc45329a21b88037e9eb1a Mon Sep 17 00:00:00 2001
+From: Colin Xu <colin.xu@intel.com>
+Date: Thu, 2 Jul 2020 08:57:48 +0800
+Subject: [PATCH] Add GPIO VirtIO backend driver.
+
+Tracked-On: OAM-92296
+Signed-off-by: Colin Xu <colin.xu@intel.com>
+---
+ default-configs/i386-softmmu.mak            |    1 +
+ hw/gpio/Makefile.objs                       |    2 +
+ hw/gpio/virtio-gpio-pci.c                   |   86 +
+ hw/gpio/virtio-gpio.c                       | 1854 +++++++++++++++++++
+ hw/i386/Kconfig                             |    4 +
+ include/hw/pci/pci.h                        |    1 +
+ include/hw/virtio/virtio-gpio.h             |  234 +++
+ include/standard-headers/linux/virtio_ids.h |    1 +
+ 8 files changed, 2183 insertions(+)
+ create mode 100644 hw/gpio/virtio-gpio-pci.c
+ create mode 100644 hw/gpio/virtio-gpio.c
+ create mode 100644 include/hw/virtio/virtio-gpio.h
+
+diff --git a/default-configs/i386-softmmu.mak b/default-configs/i386-softmmu.mak
+index 4cc64dafa2d2..805e2eff3317 100644
+--- a/default-configs/i386-softmmu.mak
++++ b/default-configs/i386-softmmu.mak
+@@ -29,3 +29,4 @@ CONFIG_ISAPC=y
+ CONFIG_I440FX=y
+ CONFIG_Q35=y
+ CONFIG_MICROVM=y
++CONFIG_VIRTIO_GPIO=y
+diff --git a/hw/gpio/Makefile.objs b/hw/gpio/Makefile.objs
+index d305b3b24b10..78427018dca8 100644
+--- a/hw/gpio/Makefile.objs
++++ b/hw/gpio/Makefile.objs
+@@ -10,3 +10,5 @@ obj-$(CONFIG_IMX) += imx_gpio.o
+ obj-$(CONFIG_RASPI) += bcm2835_gpio.o
+ obj-$(CONFIG_NRF51_SOC) += nrf51_gpio.o
+ obj-$(CONFIG_ASPEED_SOC) += aspeed_gpio.o
++obj-$(CONFIG_VIRTIO_GPIO) += virtio-gpio-pci.o
++obj-$(CONFIG_VIRTIO_GPIO) += virtio-gpio.o
+diff --git a/hw/gpio/virtio-gpio-pci.c b/hw/gpio/virtio-gpio-pci.c
+new file mode 100644
+index 000000000000..1c39d40d6abf
+--- /dev/null
++++ b/hw/gpio/virtio-gpio-pci.c
+@@ -0,0 +1,86 @@
++/*
++ * GPIO VirtIO Backend Driver
++ * virtio_gpio_pci
++ *
++ * Copyright (C) 2020, Intel Corporation. All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License version
++ * 2 as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
++ * 02110-1301, USA.
++ *
++ *
++ * Author: Colin Xu <Colin.Xu@intel.com>
++ *
++ */
++
++#include "qemu/osdep.h"
++#include "hw/qdev-properties.h"
++#include "hw/virtio/virtio-pci.h"
++#include "hw/virtio/virtio-gpio.h"
++#include "qapi/error.h"
++#include "qemu/module.h"
++
++static Property virtio_gpio_pci_properties[] = {
++    DEFINE_PROP_END_OF_LIST(),
++};
++
++static void virtio_gpio_pci_realize(VirtIOPCIProxy *vpci_dev, Error **errp)
++{
++    VirtIOGpioPCI *dev = VIRTIO_GPIO_PCI(vpci_dev);
++    DeviceState *vdev = DEVICE(&dev->vdev);
++
++    qdev_set_parent_bus(vdev, BUS(&vpci_dev->bus));
++    object_property_set_bool(OBJECT(vdev), true, "realized", errp);
++}
++
++static void virtio_gpio_pci_class_init(ObjectClass *klass, void *data)
++{
++    DeviceClass *dc = DEVICE_CLASS(klass);
++    VirtioPCIClass *k = VIRTIO_PCI_CLASS(klass);
++    PCIDeviceClass *pcidev_k = PCI_DEVICE_CLASS(klass);
++
++    set_bit(DEVICE_CATEGORY_MISC, dc->categories);
++    dc->desc = "Intel VirtIO GPIO Controller";
++    dc->props = virtio_gpio_pci_properties;
++    k->realize = virtio_gpio_pci_realize;
++    pcidev_k->vendor_id = PCI_VENDOR_ID_REDHAT_QUMRANET;
++    pcidev_k->device_id = PCI_DEVICE_ID_VIRTIO_GPIO;
++    pcidev_k->revision = VIRTIO_PCI_ABI_VERSION;
++    pcidev_k->class_id = PCI_CLASS_OTHERS;
++}
++
++static void virtio_gpio_pci_instance_init(Object *obj)
++{
++    VirtIOGpioPCI *dev = VIRTIO_GPIO_PCI(obj);
++
++    virtio_instance_init_common(obj, &dev->vdev, sizeof(dev->vdev),
++                                TYPE_VIRTIO_GPIO);
++}
++
++static const VirtioPCIDeviceTypeInfo virtio_gpio_pci_info = {
++    .base_name = TYPE_VIRTIO_GPIO_PCI_BASE,
++    .generic_name  = TYPE_VIRTIO_GPIO_PCI,
++    .parent        = TYPE_VIRTIO_PCI,
++    .transitional_name = TYPE_VIRTIO_GPIO_PCI_TRANS,
++    .non_transitional_name = TYPE_VIRTIO_GPIO_PCI_NON_TRANS,
++    .class_init    = virtio_gpio_pci_class_init,
++    .instance_size = sizeof(VirtIOGpioPCI),
++    .instance_init = virtio_gpio_pci_instance_init,
++};
++
++static void virtio_gpio_pci_register(void)
++{
++    virtio_pci_types_register(&virtio_gpio_pci_info);
++}
++
++type_init(virtio_gpio_pci_register)
+diff --git a/hw/gpio/virtio-gpio.c b/hw/gpio/virtio-gpio.c
+new file mode 100644
+index 000000000000..639e2265b129
+--- /dev/null
++++ b/hw/gpio/virtio-gpio.c
+@@ -0,0 +1,1854 @@
++/*
++ * GPIO VirtIO Backend Driver
++ * virtio_gpio
++ *
++ * Copyright (C) 2020, Intel Corporation. All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License version
++ * 2 as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
++ * 02110-1301, USA.
++ *
++ *
++ * Author: Colin Xu <Colin.Xu@intel.com>
++ *
++ */
++
++#include "qemu/osdep.h"
++#include "qemu/iov.h"
++#include "qemu/module.h"
++
++#include "qapi/error.h"
++#include "qapi/qmp/qjson.h"
++#include "qapi/qmp/qdict.h"
++#include "qapi/qmp/qlist.h"
++#include "qapi/qmp/qstring.h"
++#include "qapi/qmp/qnum.h"
++#include "qapi/qmp/qbool.h"
++
++#include "hw/virtio/virtio.h"
++#include "hw/qdev-properties.h"
++#include "hw/virtio/virtio-gpio.h"
++
++#include <sys/ioctl.h>
++#include <sys/signalfd.h>
++#include <linux/gpio.h>
++#include <poll.h>
++
++static gpio_desc* virtio_gpio_find_hgpio_byname(VirtIOGpio *vgpio, const char *name)
++{
++    gpio_desc *node, *next = NULL;
++    QLIST_FOREACH_SAFE(node, &vgpio->hgpio_list, next, next) {
++        if (!strcmp(name, node->name)) {
++            break;
++        }
++    }
++    return node;
++}
++
++static void virtio_gpio_print_req(virtio_gpio_request *req)
++{
++#ifdef DEBUG_VIRTIO_GPIO
++    const char *cmds[GPIO_REQ_MAX + 1] = {
++        "GPIO_REQ_SET_VALUE",
++        "GPIO_REQ_GET_VALUE",
++        "GPIO_REQ_INPUT_DIRECTION",
++        "GPIO_REQ_OUTPUT_DIRECTION",
++        "GPIO_REQ_GET_DIRECTION",
++        "GPIO_REQ_SET_CONFIG",
++        "GPIO_REQ_MAX",
++    };
++    DPRINTF(">>>req cmd:%s(%d), offset:%d(0x%x), data:%ld(0x%lx)\n",
++            cmds[req->cmd], req->cmd,
++            req->offset, req->offset, req->data, req->data);
++#endif
++}
++
++static void virtio_gpio_print_rsp(virtio_gpio_response *rsp)
++{
++    DPRINTF("<<<rsp err:%d, data:%d(0x%x)\n", rsp->err, rsp->data, rsp->data);
++}
++
++static void virtio_irq_print_req(virtio_gpio_irq_request *req)
++{
++#ifdef DEBUG_VIRTIO_GPIO
++    const char *actions[IRQ_ACTION_MAX + 1] = {
++        "IRQ_ACTION_ENABLE",
++        "IRQ_ACTION_DISABLE",
++        "IRQ_ACTION_ACK",
++        "IRQ_ACTION_MASK",
++        "IRQ_ACTION_UNMASK",
++        "IRQ_ACTION_MAX",
++    };
++    DPRINTF(">>>req action:%s(%d), pin:%d(0x%x), mode:%d(0x%x)\n",
++            actions[req->action], req->action,
++            req->pin, req->pin, req->mode, req->mode);
++#endif
++}
++
++static void virtio_gpio_print_hgpio_info(VirtIOGpio *vgpio)
++{
++    gpio_desc *node, *next = NULL;
++
++    DPRINTF("Host GPIO info:\n");
++    QLIST_FOREACH_SAFE(node, &vgpio->hgpio_list, next, next) {
++        DPRINTF("name:%s, label:%s, lines:%3d\n", node->name, node->label, node->lines);
++    }
++}
++
++static void virtio_gpio_print_vline_info(gpio_line *vline)
++{
++    if (vline) {
++        DPRINTF("pin %3d'%1s': %s(%s) pin %3d'%1s' lineinfo flags(0x%08x): dir(%s) state(%11s) open_drain(%d) open_source(%d), handle flags(0x%08x), last_set(%d), last_get(%d)\n",
++                vline->voffset, vline->vname,
++                vline->chip->name, vline->chip->label,
++                vline->offset, vline->name, vline->flags,
++                vline->dir ? "input" : "output",
++                vline->astate ? "active-low" : "active-high",
++                vline->open_drain, vline->open_source,
++                vline->handle_flags, vline->last_set, vline->last_get);
++    }
++}
++
++static void virtio_gpio_print_vgpio_info(VirtIOGpio *vgpio)
++{
++    DPRINTF("VirtIO GPIO info:\n");
++    if (vgpio) {
++        int i;
++
++        DPRINTF("base %d, ngpio %d\n", vgpio->config.base, vgpio->config.ngpio);
++        for (i = 0; i < vgpio->config.ngpio; i++)
++            virtio_gpio_print_vline_info(&vgpio->vlines[i]);
++    }
++}
++
++static Property virtio_gpio_properties[] = {
++    DEFINE_PROP_STRING("config", VirtIOGpio, param_str),
++    DEFINE_PROP_END_OF_LIST(),
++};
++
++static const VMStateDescription vmstate_virtio_gpio = {
++    .name = "virtio-gpio",
++    .minimum_version_id = VIRTIO_GPIO_VM_VERSION,
++    .version_id = VIRTIO_GPIO_VM_VERSION,
++    .fields = (VMStateField[]) {
++        VMSTATE_VIRTIO_DEVICE,
++        VMSTATE_END_OF_LIST()
++    },
++};
++
++static int virtio_gpio_register_handler(VirtIOGpio *vgpio,
++                                        virtio_gpio_data *data, uint32_t maxlines)
++{
++    gpio_line *vline;
++    int i;
++
++    if (vgpio->config.ngpio >= maxlines) {
++        DPRINTF("Request %d lines, max (%d)\n", vgpio->config.ngpio, maxlines);
++        return 0;
++    }
++
++    for (i = 0; i < vgpio->config.ngpio; i++) {
++        vline = &vgpio->vlines[i];
++        assert(i == vline->voffset);
++        strncpy(data[i].name, vline->vname, sizeof(data[i].name) - 1);
++        DPRINTF(">>>register pin %d(%d) name '%s'\n",
++                vline->voffset, vline->offset, vline->vname);
++    }
++    return vgpio->config.ngpio;
++}
++
++/* update_vlineinfo after each line open and set_config */
++static int virtio_gpio_update_vlineinfo(gpio_line *vline)
++{
++    struct gpioline_info lineinfo = {0};
++
++    if (!vline || !vline->chip || !vline->chip->fd)
++        return -EINVAL;
++
++    lineinfo.line_offset = vline->offset;
++    if (ioctl(vline->chip->fd, GPIO_GET_LINEINFO_IOCTL, &lineinfo) < 0) {
++        DPRINTF("GPIO_GET_LINEINFO_IOCTL failed on %s pin %d(%d)\n",
++                vline->chip->name, vline->offset, vline->voffset);
++        return -EINVAL;
++    }
++
++    strncpy(vline->name, lineinfo.name, sizeof(vline->name) - 1);
++    strncpy(vline->consumer, lineinfo.consumer, sizeof(vline->consumer) - 1);
++    vline->flags = lineinfo.flags;
++    vline->dir = lineinfo.flags & GPIOLINE_FLAG_IS_OUT ? 0 : 1;
++    vline->used = lineinfo.flags & GPIOLINE_FLAG_KERNEL;
++    vline->astate = lineinfo.flags & GPIOLINE_FLAG_ACTIVE_LOW;
++    vline->open_drain = lineinfo.flags & GPIOLINE_FLAG_OPEN_DRAIN;
++    vline->open_source = lineinfo.flags & GPIOLINE_FLAG_OPEN_SOURCE;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
++    vline->bias_pull_up = lineinfo.flags & GPIOLINE_FLAG_BIAS_PULL_UP;
++    vline->bias_pull_down = lineinfo.flags & GPIOLINE_FLAG_BIAS_PULL_DOWN;
++    vline->bias_pull_disable = lineinfo.flags & GPIOLINE_FLAG_BIAS_DISABLE;
++#endif
++
++    /* Do not set to used if VirtIO GPIO can open the line */
++    if (vline->used && vline->fd)
++        vline->used = false;
++
++    return 0;
++}
++
++static int virtio_gpio_close_hgpio_line(gpio_line *vline)
++{
++    if (!vline)
++        return -EINVAL;
++
++    if (vline->bypass)
++        return 0;
++
++    if (vline->fd) {
++        close(vline->fd);
++        vline->fd = 0;
++        vline->irq.on = false;
++        vline->irq.type = IRQ_TYPE_NONE;
++        vline->irq.mask = false;
++        DPRINTF("pin %d(%d) closed\n", vline->voffset, vline->offset);
++    }
++
++    if (vline->irq.ev_thread.thread) {
++        /* Send SIGUSR1 to event thread to terminate blocking read line event */
++        DPRINTF("Notify to terminate %s Event thread %d(%d)\n",
++                VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset);
++        pthread_kill(vline->irq.ev_thread.thread, SIGUSR1);
++        qemu_thread_join(&vline->irq.ev_thread);
++        vline->irq.ev_thread.thread = 0;
++    }
++
++    return 0;
++}
++
++/* Follow gpiolib.c logic to validate flags */
++static int linehandle_validate_flags(uint32_t flags)
++{
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
++    #define GPIOHANDLE_REQUEST_VALID_FLAGS \
++        (GPIOHANDLE_REQUEST_INPUT | \
++        GPIOHANDLE_REQUEST_OUTPUT | \
++        GPIOHANDLE_REQUEST_ACTIVE_LOW | \
++        GPIOHANDLE_REQUEST_OPEN_DRAIN | \
++        GPIOHANDLE_REQUEST_OPEN_SOURCE)
++#else
++    #define GPIOHANDLE_REQUEST_VALID_FLAGS \
++        (GPIOHANDLE_REQUEST_INPUT | \
++        GPIOHANDLE_REQUEST_OUTPUT | \
++        GPIOHANDLE_REQUEST_ACTIVE_LOW | \
++        GPIOHANDLE_REQUEST_BIAS_PULL_UP | \
++        GPIOHANDLE_REQUEST_BIAS_PULL_DOWN | \
++        GPIOHANDLE_REQUEST_BIAS_DISABLE | \
++        GPIOHANDLE_REQUEST_OPEN_DRAIN | \
++        GPIOHANDLE_REQUEST_OPEN_SOURCE)
++#endif
++    /* Return an error if an unknown flag is set */
++    if (flags & ~GPIOHANDLE_REQUEST_VALID_FLAGS)
++        return -EINVAL;
++
++    /*
++     * Do not allow both INPUT & OUTPUT flags to be set as they are
++     * contradictory.
++     */
++    if ((flags & GPIOHANDLE_REQUEST_INPUT) &&
++        (flags & GPIOHANDLE_REQUEST_OUTPUT))
++        return -EINVAL;
++
++    /*
++     * Do not allow OPEN_SOURCE & OPEN_DRAIN flags in a single request. If
++     * the hardware actually supports enabling both at the same time the
++     * electrical result would be disastrous.
++     */
++    if ((flags & GPIOHANDLE_REQUEST_OPEN_DRAIN) &&
++        (flags & GPIOHANDLE_REQUEST_OPEN_SOURCE))
++        return -EINVAL;
++
++    /* OPEN_DRAIN and OPEN_SOURCE flags only make sense for output mode. */
++    if (!(flags & GPIOHANDLE_REQUEST_OUTPUT) &&
++        ((flags & GPIOHANDLE_REQUEST_OPEN_DRAIN) ||
++         (flags & GPIOHANDLE_REQUEST_OPEN_SOURCE)))
++        return -EINVAL;
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
++    /* Bias flags only allowed for input or output mode. */
++    if (!((flags & GPIOHANDLE_REQUEST_INPUT) ||
++          (flags & GPIOHANDLE_REQUEST_OUTPUT)) &&
++        ((flags & GPIOHANDLE_REQUEST_BIAS_DISABLE) ||
++         (flags & GPIOHANDLE_REQUEST_BIAS_PULL_UP) ||
++         (flags & GPIOHANDLE_REQUEST_BIAS_PULL_DOWN)))
++        return -EINVAL;
++
++    /* Only one bias flag can be set. */
++    if (((flags & GPIOHANDLE_REQUEST_BIAS_DISABLE) &&
++         (flags & (GPIOHANDLE_REQUEST_BIAS_PULL_DOWN |
++            GPIOHANDLE_REQUEST_BIAS_PULL_UP))) ||
++        ((flags & GPIOHANDLE_REQUEST_BIAS_PULL_DOWN) &&
++         (flags & GPIOHANDLE_REQUEST_BIAS_PULL_UP)))
++        return -EINVAL;
++#endif
++
++    return 0;
++}
++
++static int lineevent_validate_flags(uint32_t flags)
++{
++    if (flags & ~GPIOEVENT_REQUEST_BOTH_EDGES)
++        return -EINVAL;
++    return 0;
++}
++
++static int virtio_gpio_open_hgpio_line(gpio_line *vline, uint32_t flags,
++                                       uint8_t value)
++{
++    struct gpiohandle_request line_req = {0};
++
++    if (!vline || !vline->vgpio ||!vline->chip || !vline->chip->fd)
++        return -EINVAL;
++
++    if (vline->bypass) {
++        DPRINTF("pin %d(%d) set as bypass\n", vline->voffset, vline->offset);
++        goto out;
++    }
++
++    /* Follow gpiolib.c logic to validate flags, should never fail */
++    if (linehandle_validate_flags(flags)) {
++        DPRINTF("Unsupported GPIOHANDLE_REQUEST flags %x to line %d(%d)\n",
++                flags, vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    line_req.lineoffsets[0] = vline->offset;
++    line_req.flags = flags;
++    strncpy(line_req.consumer_label, VIRTIO_GPIO_NAME_GPIO,
++            sizeof(line_req.consumer_label) - 1);
++    line_req.lines = 1;
++
++    if (flags & GPIOHANDLE_REQUEST_OUTPUT)
++        line_req.default_values[0] = value;
++
++    /* The caller should handle the close and re-open logic */
++    if (vline->fd) {
++        DPRINTF("pin %d(%d) already opened\n", vline->voffset, vline->offset);
++        goto out;
++    } else {
++        if (ioctl(vline->chip->fd, GPIO_GET_LINEHANDLE_IOCTL, &line_req) < 0) {
++            DPRINTF("GPIO_GET_LINEHANDLE_IOCTL failed on %s pin %d(%d) flags(0x%08x)\n",
++                    vline->chip->name, vline->voffset, vline->offset, line_req.flags);
++            return -EINVAL;
++        }
++        vline->fd = line_req.fd;
++        /* Update latest handle_flags */
++        vline->handle_flags = line_req.flags;
++        /* Update last_set in case open for output */
++        if (flags & GPIOHANDLE_REQUEST_OUTPUT)
++            vline->last_set = value;
++        DPRINTF("pin %d(%d) opened for LINEHANDLE with flags(0x%08x)\n",
++                vline->voffset, vline->offset, vline->handle_flags);
++    }
++
++out:
++    /* Make sure line info are up-to-date */
++    return virtio_gpio_update_vlineinfo(vline);
++}
++
++static int virtio_gpio_update_hgpio_gpio_req(gpio_line *vline,
++                                             virtio_gpio_request *req)
++{
++    int rc = 0;
++    bool doclose = false;
++    uint32_t flags = vline->handle_flags;
++
++    if (req->offset != vline->voffset) {
++        DPRINTF("GPIO_REQ pin %d mismatch vline pin %d(%d)\n",
++                req->offset, vline->voffset, vline->offset);
++        goto out;
++    }
++
++    switch (req->cmd) {
++    case GPIO_REQ_SET_VALUE:
++    case GPIO_REQ_OUTPUT_DIRECTION:
++        /* Make line GPIOHANDLE_REQUEST_OUTPUT */
++        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_OUTPUT)) {
++            flags &= ~GPIOHANDLE_REQUEST_INPUT;
++            flags |= GPIOHANDLE_REQUEST_OUTPUT;
++            /* OPEN_DRAIN and OPEN_SOURCE are inherited */
++            doclose = true;
++        }
++        break;
++    case GPIO_REQ_GET_VALUE:
++    case GPIO_REQ_INPUT_DIRECTION:
++        /* Make line GPIOHANDLE_REQUEST_INPUT */
++        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_INPUT)) {
++            flags &= ~GPIOHANDLE_REQUEST_OUTPUT;
++            flags |= GPIOHANDLE_REQUEST_INPUT;
++            /* OPEN_DRAIN and OPEN_SOURCE flags only make sense for output */
++            flags &= ~(GPIOHANDLE_REQUEST_OPEN_DRAIN | GPIOHANDLE_REQUEST_OPEN_SOURCE);
++            doclose = true;
++        }
++        break;
++    /* virtio_gpio_update_vlineinfo will update */
++    case GPIO_REQ_GET_DIRECTION:
++    /* virtio_gpio_hgpio_set_config will decide close or not */
++    case GPIO_REQ_SET_CONFIG:
++    default:
++        doclose = false;
++        break;
++    }
++
++    if (doclose) {
++        DPRINTF("Will re-open pin %d(%d) as GPIO, handle flags (0x%08x)->(0x%08x)\n",
++                vline->voffset, vline->offset, vline->handle_flags, flags);
++        rc = virtio_gpio_close_hgpio_line(vline);
++        /* Save the updated flags so next open can use */
++        vline->handle_flags = flags;
++    }
++
++out:
++    return rc;
++}
++
++static int virtio_gpio_hgpio_set_value(gpio_line *vline, uint32_t value)
++{
++    struct gpiohandle_data data = {0};
++
++    if (!vline) {
++        DPRINTF("Invalid args vline %p\n", vline);
++        return -EINVAL;
++    }
++
++    if (vline->bypass) {
++        vline->last_set = value;
++        return 0;
++    }
++
++    if (vline->used) {
++        DPRINTF("pin %d(%d) is used by kernel\n", vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    /* If line not opened yet, open as output and set value */
++    if (!vline->fd) {
++        return virtio_gpio_open_hgpio_line(vline, vline->handle_flags, value);
++    } else {
++        data.values[0] = value;
++        if (ioctl(vline->fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
++            DPRINTF("GPIOHANDLE_SET_LINE_VALUES_IOCTL failed on %s pin %d(%d)\n",
++                    vline->chip->name, vline->offset, vline->voffset);
++            return -EINVAL;
++        }
++        vline->last_set = value;
++    }
++
++    return 0;
++}
++
++static int virtio_gpio_hgpio_get_value(gpio_line *vline)
++{
++    struct gpiohandle_data data = {0};
++
++    if (!vline)
++        return -EINVAL;
++
++    if (vline->bypass) {
++        /* If bypass, only return last set value as get, do not access HW */
++        vline->last_get = vline->last_set;
++        return 0;
++    }
++
++    if (vline->used) {
++        DPRINTF("pin %d(%d) is used by kernel\n", vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    /* If line not opened yet, open as input first */
++    if (!vline->fd) {
++        virtio_gpio_open_hgpio_line(vline, vline->handle_flags, 0);
++    }
++
++    if (ioctl(vline->fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
++        DPRINTF("GPIOHANDLE_GET_LINE_VALUES_IOCTL failed on %s pin %d(%d)\n",
++                vline->chip->name, vline->offset, vline->voffset);
++        return -EINVAL;
++    }
++    vline->last_get = data.values[0];
++
++    return data.values[0];
++}
++
++static uint32_t virtio_gpio_irq_mode_to_gpio_event(uint8_t mode)
++{
++    uint32_t flags = 0;
++
++    if (mode & IRQ_TYPE_EDGE_RISING) {
++        flags |= GPIOEVENT_REQUEST_RISING_EDGE;
++        mode &= ~IRQ_TYPE_EDGE_RISING;
++    }
++    if (mode & IRQ_TYPE_EDGE_FALLING) {
++        flags |= GPIOEVENT_REQUEST_FALLING_EDGE;
++        mode &= ~IRQ_TYPE_EDGE_FALLING;
++    }
++
++    if (mode & IRQ_TYPE_LEVEL_MASK) {
++        flags |= IRQ_TYPE_EDGE_BOTH;
++        mode &= ~IRQ_TYPE_LEVEL_MASK;
++    }
++
++    if (mode)
++        DPRINTF("Unsupported IRQ_TYPE flags %x\n", mode);
++
++    return flags;
++}
++
++
++static int virtio_gpio_update_hgpio_irq_req(gpio_line *vline,
++                                            virtio_gpio_irq_request *req)
++{
++    int rc = 0;
++    bool doclose = false;
++    uint32_t ev_flags = 0, hd_flags = 0;
++
++    if (req->pin != vline->voffset) {
++        DPRINTF("GPIO_REQ pin %d mismatch vline pin %d(%d)\n",
++                req->pin, vline->voffset, vline->offset);
++        goto out;
++    }
++
++    ev_flags = virtio_gpio_irq_mode_to_gpio_event(req->mode);
++
++    switch (req->action) {
++    case IRQ_ACTION_ENABLE:
++        /* Need close first then re-open for GPIOEVENT with selected event */
++        if (vline->fd) {
++            if (!vline->irq.on || ev_flags != vline->event_events ||
++                req->mode != vline->irq.type ||
++                !(vline->handle_flags & GPIOHANDLE_REQUEST_INPUT))
++                doclose = true;
++        }
++        break;
++        /* Not opened for GPIOEVENT */
++    case IRQ_ACTION_ACK:
++    case IRQ_ACTION_MASK:
++    case IRQ_ACTION_UNMASK:
++        if (!vline->fd || !vline->irq.on) {
++            DPRINTF("Pin %d(%d) isn't enabled as IRQ yet, re-open as IRQ\n",
++                    vline->voffset, vline->offset);
++            doclose = true;
++        }
++        break;
++    case IRQ_ACTION_DISABLE:
++    default:
++        break;
++    }
++
++    if (doclose) {
++        /* Make sure line is in INPUT for IRQ */
++        hd_flags = vline->handle_flags;
++        hd_flags &= ~(GPIOHANDLE_REQUEST_OUTPUT |
++                      GPIOHANDLE_REQUEST_OPEN_SOURCE |
++                      GPIOHANDLE_REQUEST_OPEN_DRAIN);
++        hd_flags |= GPIOHANDLE_REQUEST_INPUT;
++        DPRINTF("Will re-open pin %d(%d) as IRQ, handle flags (0x%08x)->(0x%08x), "
++                "event flags (0x%08x)->(0x%08x)\n",
++                vline->voffset, vline->offset, vline->handle_flags, hd_flags,
++                vline->event_events, ev_flags);
++        virtio_gpio_close_hgpio_line(vline);
++        vline->handle_flags = hd_flags;
++        vline->event_events = ev_flags;
++        vline->irq.type = req->mode;
++    }
++out:
++    return rc;
++}
++
++static int virtio_gpio_hgpio_set_input_direction(gpio_line *vline)
++{
++    int rc = -EINVAL;
++
++    if (!vline)
++        return -EINVAL;
++
++    if (vline->bypass) {
++        vline->dir = 1;
++        return 0;
++    }
++
++    if (vline->used) {
++        DPRINTF("pin %d(%d) is used by kernel\n", vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    if (vline->fd) {
++        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_INPUT)) {
++            DPRINTF("pin %d(%d) incorrect flags(0x%08x) for input_direction\n",
++                    vline->voffset, vline->offset, vline->handle_flags);
++        } else {
++            DPRINTF("pin %d(%d) already opened for input_direction\n",
++                    vline->voffset, vline->offset);
++            rc = 0;
++        }
++    } else {
++        rc = virtio_gpio_open_hgpio_line(vline, vline->handle_flags, 0);
++    }
++
++    return rc;
++}
++
++static int virtio_gpio_hgpio_set_output_direction(gpio_line *vline, uint32_t value)
++{
++    int rc = -EINVAL;
++
++    if (!vline)
++        return -EINVAL;
++
++    if (vline->bypass) {
++        vline->dir = 0;
++        return 0;
++    }
++
++    if (vline->used) {
++        DPRINTF("pin %d(%d) is used by kernel\n", vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    if (vline->fd) {
++        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_OUTPUT)) {
++            DPRINTF("pin %d(%d) incorrect flags(0x%08x) for output_direction\n",
++                    vline->voffset, vline->offset, vline->handle_flags);
++        } else {
++            DPRINTF("pin %d(%d) already opened for output_direction\n",
++                    vline->voffset, vline->offset);
++            rc = 0;
++        }
++    } else {
++        rc = virtio_gpio_open_hgpio_line(vline, vline->handle_flags, value);
++    }
++
++    return rc;
++}
++
++static int virtio_gpio_hgpio_get_direction(gpio_line *vline)
++{
++    if (!vline)
++        return -EINVAL;
++
++    if (vline->bypass)
++        return 0;
++
++    if (vline->used) {
++        DPRINTF("pin %d(%d) is used by kernel\n", vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    if (!vline->fd) {
++        return virtio_gpio_open_hgpio_line(vline, vline->handle_flags, 0);
++    }
++
++    return virtio_gpio_update_vlineinfo(vline);
++}
++
++static int virtio_gpio_hgpio_set_config(gpio_line *vline, unsigned long config)
++{
++#ifdef DEBUG_VIRTIO_GPIO
++    const char *pincfgs[PIN_CONFIG_MAX + 1] = {
++        "PIN_CONFIG_BIAS_BUS_HOLD",
++        "PIN_CONFIG_BIAS_DISABLE",
++        "PIN_CONFIG_BIAS_HIGH_IMPEDANCE",
++        "PIN_CONFIG_BIAS_PULL_DOWN",
++        "PIN_CONFIG_BIAS_PULL_PIN_DEFAULT",
++        "PIN_CONFIG_BIAS_PULL_UP",
++        "PIN_CONFIG_DRIVE_OPEN_DRAIN",
++        "PIN_CONFIG_DRIVE_OPEN_SOURCE",
++        "PIN_CONFIG_DRIVE_PUSH_PULL",
++        "PIN_CONFIG_DRIVE_STRENGTH",
++        "PIN_CONFIG_DRIVE_STRENGTH_UA",
++        "PIN_CONFIG_INPUT_DEBOUNCE",
++        "PIN_CONFIG_INPUT_ENABLE",
++        "PIN_CONFIG_INPUT_SCHMITT",
++        "PIN_CONFIG_INPUT_SCHMITT_ENABLE",
++        "PIN_CONFIG_LOW_POWER_MODE",
++        "PIN_CONFIG_OUTPUT_ENABLE",
++        "PIN_CONFIG_OUTPUT",
++        "PIN_CONFIG_POWER_SOURCE",
++        "PIN_CONFIG_SLEEP_HARDWARE_STATE",
++        "PIN_CONFIG_SLEW_RATE",
++        "PIN_CONFIG_SKEW_DELAY",
++        "PIN_CONFIG_PERSIST_STATE",
++    };
++#endif
++    int rc = 0;
++    bool reopen = false;
++    uint32_t flags = vline->handle_flags;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
++    uint32_t bias_flags;
++#endif
++
++    if (!vline)
++        return -EINVAL;
++
++    DPRINTF("Receive .set_config 0x%lx(%s) to pin %d(%d)\n", config,
++            pincfgs[PIN_CONF_UNPACKED(config)], vline->voffset, vline->offset);
++
++    /* Only support flags that can be set via gpiohandle_request{} */
++    switch (PIN_CONF_UNPACKED(config)) {
++    case PIN_CONFIG_DRIVE_OPEN_DRAIN:
++        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_OPEN_DRAIN)) {
++            flags |= GPIOHANDLE_REQUEST_OPEN_DRAIN;
++            reopen = true;
++        }
++        /* OPEN_DRAIN only makes sense for output */
++        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_OUTPUT)) {
++            flags &= ~GPIOHANDLE_REQUEST_INPUT;
++            flags |= GPIOHANDLE_REQUEST_OUTPUT;
++            reopen = true;
++        }
++        /* Can't be OPEN_SOURCE & OPEN_DRAIN at same time */
++        if (vline->handle_flags & GPIOHANDLE_REQUEST_OPEN_SOURCE) {
++            flags &= ~GPIOHANDLE_REQUEST_OPEN_SOURCE;
++            reopen = true;
++        }
++        break;
++    case PIN_CONFIG_DRIVE_OPEN_SOURCE:
++        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_OPEN_SOURCE)) {
++            flags |= GPIOHANDLE_REQUEST_OPEN_SOURCE;
++            reopen = true;
++        }
++        /* OPEN_SOURCE only makes sense for output */
++        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_OUTPUT)) {
++            flags &= ~GPIOHANDLE_REQUEST_INPUT;
++            flags |= GPIOHANDLE_REQUEST_OUTPUT;
++            reopen = true;
++        }
++        /* Can't be OPEN_SOURCE & OPEN_DRAIN at same time */
++        if (vline->handle_flags & GPIOHANDLE_REQUEST_OPEN_DRAIN) {
++            flags &= ~GPIOHANDLE_REQUEST_OPEN_DRAIN;
++            flags |= GPIOHANDLE_REQUEST_OPEN_SOURCE;
++            reopen = true;
++        }
++        break;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
++    case PIN_CONFIG_BIAS_DISABLE:
++    case PIN_CONFIG_BIAS_PULL_DOWN:
++    case PIN_CONFIG_BIAS_PULL_UP:
++        bias_flags = (GPIOHANDLE_REQUEST_BIAS_DISABLE |
++                     GPIOHANDLE_REQUEST_BIAS_PULL_DOWN |
++                     GPIOHANDLE_REQUEST_BIAS_PULL_UP);
++        /* Only one bias flag can be set */
++        if ((vline->handle_flags & bias_flags) != PIN_CONF_UNPACKED(config)) {
++            flags &= ~bias_flags;
++            flags |= PIN_CONF_UNPACKED(config);
++            reopen = true;
++        }
++        /* bios flag only allowed for input or output */
++        if (!(vline->handle_flags & (GPIOHANDLE_REQUEST_INPUT | GPIOHANDLE_REQUEST_OUTPUT)))
++            DPRINTF("PIN_CONFIG (%s) set for neither INPUT nor OUTPUT\n",
++                    pincfgs[PIN_CONF_UNPACKED(config)]);
++        break;
++#endif
++    default:
++        DPRINTF("Unsupported PIN_CONFIG (%s)\n",
++                pincfgs[PIN_CONF_UNPACKED(config)]);
++        break;
++    }
++
++    if (vline->bypass)
++        return 0;
++
++    if (vline->used) {
++        DPRINTF("pin %d(%d) is used by kernel\n", vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    if (reopen) {
++        DPRINTF("pin %d(%d) re-open due to flags changed (0x%08x)->(0x%08x)\n",
++                vline->voffset, vline->offset, vline->handle_flags, flags);
++        rc = virtio_gpio_close_hgpio_line(vline);
++        if (rc >= 0)
++            rc = virtio_gpio_open_hgpio_line(vline, flags, vline->last_set);
++    }
++
++    return rc;
++}
++
++static int virtio_gpio_req_handler(VirtIOGpio *vgpio, virtio_gpio_io *gpio_io)
++{
++    virtio_gpio_config *cfg = &vgpio->config;
++    gpio_line *vline = NULL;
++    int rc = -EINVAL;
++
++    if (!vgpio || !gpio_io)
++        goto out;
++
++    virtio_gpio_print_req(&gpio_io->req);
++
++    if (gpio_io->req.cmd >= GPIO_REQ_MAX) {
++        DPRINTF("Invalid GPIO_REQ cmd %d\n", gpio_io->req.cmd);
++        goto out;
++    }
++
++    if (gpio_io->req.offset >= cfg->ngpio) {
++        DPRINTF("Invalid GPIO_REQ pin %d\n", gpio_io->req.offset);
++        goto out;
++    }
++
++    vline = &vgpio->vlines[gpio_io->req.offset];
++    if (!vline->chip && &vline->chip->fd) {
++        DPRINTF("Host gpio chip %s isn't opened for pin %d\n",
++                vline->chip->name, gpio_io->req.offset);
++        goto out;
++    }
++
++    rc = virtio_gpio_update_hgpio_gpio_req(vline, &gpio_io->req);
++    if (rc < 0) {
++        DPRINTF("Fail to update for GPIO_REQ %d\n", gpio_io->req.cmd);
++        goto out;
++    }
++
++    switch (gpio_io->req.cmd) {
++    case GPIO_REQ_SET_VALUE:
++        rc = virtio_gpio_hgpio_set_value(vline, gpio_io->req.data);
++        break;
++    case GPIO_REQ_GET_VALUE:
++        rc = virtio_gpio_hgpio_get_value(vline);
++        if (rc >= 0)
++            gpio_io->rsp.data = vline->last_get;
++        break;
++    case GPIO_REQ_INPUT_DIRECTION:
++        rc = virtio_gpio_hgpio_set_input_direction(vline);
++        break;
++    case GPIO_REQ_OUTPUT_DIRECTION:
++        rc = virtio_gpio_hgpio_set_output_direction(vline, gpio_io->req.data);
++        break;
++    case GPIO_REQ_GET_DIRECTION:
++        rc = virtio_gpio_hgpio_get_direction(vline);
++        if (rc >= 0)
++            gpio_io->rsp.data = vline->dir;
++        break;
++    case GPIO_REQ_SET_CONFIG:
++        rc = virtio_gpio_hgpio_set_config(vline, gpio_io->req.data);
++        break;
++    default:
++        DPRINTF("Unsupported GPIO_REQ %d\n", gpio_io->req.cmd);
++        rc = -EINVAL;
++        break;
++    }
++
++out:
++    gpio_io->rsp.err = rc < 0 ? -1 : 0;
++    virtio_gpio_print_rsp(&gpio_io->rsp);
++
++    return sizeof(gpio_io->rsp);
++}
++
++static void virtio_gpio_notify(VirtIODevice *vdev, VirtQueue *vq)
++{
++    VirtIOGpio *vgpio = VIRTIO_GPIO(vdev);
++    virtio_gpio_config *cfg = &vgpio->config;
++
++    if (!virtio_queue_ready(vq)) {
++        DPRINTF("vq_gpio isn't ready\n");
++        return;
++    }
++
++    for (;;) {
++        VirtQueueElement *elem;
++        struct iovec *in_iov;
++        struct iovec *out_iov;
++        size_t len = 0;
++
++        elem = virtqueue_pop(vq, sizeof(VirtQueueElement));
++        if (!elem)
++            break;
++
++        in_iov = elem->in_sg;
++        out_iov = elem->out_sg;
++
++        DPRINTF("vq_gpio index(%d) len(%d) ndescs(%d) out_num(%d) in_num(%d)\n",
++                elem->index, elem->len, elem->ndescs, elem->out_num, elem->in_num);
++
++        if (elem->in_num == 1 && elem->out_num == 0) {
++            virtio_gpio_data data[VIRTIO_GPIO_MAX_VLINES] = {0};
++
++            if (unlikely(iov_to_buf(in_iov, elem->in_num, 0, &data, sizeof(data))
++                         != cfg->ngpio * sizeof(virtio_gpio_data))) {
++                virtio_error(vdev, "virtio-gpio insufficient to_buf from vq\n");
++                virtqueue_detach_element(vq, elem, 0);
++                g_free(elem);
++                break;
++            }
++            len =virtio_gpio_register_handler(vgpio, data, VIRTIO_GPIO_MAX_VLINES);
++            if (unlikely(iov_from_buf(in_iov, elem->in_num, 0, &data,
++                                      cfg->ngpio * sizeof(virtio_gpio_data))
++                         != cfg->ngpio * sizeof(virtio_gpio_data))) {
++                virtio_error(vdev, "virtio-gpio insufficient VirtQueue size\n");
++                virtqueue_detach_element(vq, elem, 0);
++                g_free(elem);
++                break;
++            }
++            len = cfg->ngpio;
++        } else if (elem->in_num == 1 && elem->out_num == 1) {
++            virtio_gpio_io gpio_io = {0};
++
++            if (unlikely(iov_to_buf(out_iov, elem->out_num, 0, &gpio_io.req,
++                sizeof(gpio_io.req)) != sizeof(gpio_io.req))) {
++                virtio_error(vdev, "virtio-gpio insufficient to_buf from vq\n");
++                virtqueue_detach_element(vq, elem, 0);
++                g_free(elem);
++                break;
++            }
++            len = virtio_gpio_req_handler(vgpio, &gpio_io);
++            if (unlikely(iov_from_buf(in_iov, elem->in_num, 0, &gpio_io.rsp,
++                sizeof(gpio_io.rsp)) != sizeof(gpio_io.rsp))) {
++                virtio_error(vdev, "virtio-gpio insufficient from_buf to vq\n");
++                virtqueue_detach_element(vq, elem, 0);
++                g_free(elem);
++                break;
++            }
++        } else {
++            virtio_error(vdev, "virtio-gpio unsupported buffer number in(%d) out(%d)\n",
++                         elem->in_num, elem->out_num);
++            virtqueue_detach_element(vq, elem, 0);
++            g_free(elem);
++            break;
++        }
++
++        virtqueue_push(vq, elem, len);
++        virtio_notify(vdev, vq);
++        g_free(elem);
++    }
++}
++
++static bool virtio_gpio_irq_has_pending_intr(gpio_line *vline)
++{
++    if (vline->event_events & IRQ_TYPE_LEVEL_MASK) {
++        if (((vline->event_events & IRQ_TYPE_LEVEL_HIGH) && vline->last_get) ||
++            ((vline->event_events & IRQ_TYPE_LEVEL_LOW) && !vline->last_get))
++            return true;
++    }
++    return false;
++}
++
++static int virtio_gpio_irq_clear_intr(gpio_line *vline)
++{
++    if (!vline)
++        return -EINVAL;
++
++    if (vline->used) {
++        DPRINTF("pin %d(%d) is used by kernel\n", vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    qemu_mutex_lock(&vline->vgpio->irq.mutex);
++    vline->vgpio->irq.service &= ~BIT(vline->voffset);
++    qemu_mutex_unlock(&vline->vgpio->irq.mutex);
++
++    return 0;
++}
++
++static int virtio_gpio_irq_deliver_intr(gpio_line *vline, uint64_t intr)
++{
++    int i;
++    VirtQueueElement *elem;
++    size_t len = 0;
++    VirtIOGpio *vgpio = NULL;
++
++    if (!vline)
++        return -EINVAL;
++
++    vgpio = vline->vgpio;
++
++    elem = virtqueue_pop(vgpio->vq_irq_ev, sizeof(VirtQueueElement));
++    if (!elem) {
++        DPRINTF("vq_irq_ev has no element\n");
++        goto out;
++    }
++
++    len = iov_from_buf(elem->in_sg, elem->in_num, 0, &intr, sizeof(uint64_t));
++    virtqueue_push(vgpio->vq_irq_ev, elem, len);
++    g_free(elem);
++    virtio_notify(VIRTIO_DEVICE(vline->vgpio), vgpio->vq_irq_ev);
++    DPRINTF("intr 0x%lx delivered\n", intr);
++
++    /* Record line interrupt status */
++    for (i = 0; i < vgpio->config.ngpio; i++) {
++        if (intr & BIT(i))
++            vgpio->vlines[i].irq.stat_tx++;
++    }
++    vgpio->irq.stat++;
++
++out:
++    return 0;
++}
++
++static int virtio_gpio_irq_generate_intr(gpio_line *vline)
++{
++    if (!vline)
++        return -EINVAL;
++
++    if (vline->used) {
++        DPRINTF("pin %d(%d) is used by kernel\n", vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    if (vline->irq.mask) {
++        DPRINTF("pin %d(%d) is masked\n", vline->voffset, vline->offset);
++        return 0;
++    }
++
++    qemu_mutex_lock(&vline->vgpio->irq.mutex);
++
++    vline->vgpio->irq.pending |= BIT(vline->voffset);
++
++    if (!vline->vgpio->irq.service) {
++        vline->vgpio->irq.service = vline->vgpio->irq.pending;
++        vline->vgpio->irq.pending = 0;
++
++        virtio_gpio_irq_deliver_intr(vline, vline->vgpio->irq.service);
++    }
++
++    qemu_mutex_unlock(&vline->vgpio->irq.mutex);
++
++    return 0;
++}
++
++static void *virtio_gpio_event_thread(void *arg)
++{
++    gpio_line *vline = arg;
++    struct gpioevent_data ev_data = {0};
++    sigset_t sigmask, old;
++    struct pollfd pollfds[2];
++    struct timespec timeout = { VIRTIO_GPIO_IRQ_POLL_INT_SEC, 0 };
++    ssize_t rd = 0;
++    int sigfd, ts, err;
++
++    if (!vline) {
++        DPRINTF("%s thread invalid gpio_line\n", VIRTIO_GPIO_NAME_IRQ);
++        goto out;
++    }
++
++    sigemptyset(&sigmask);
++    sigaddset(&sigmask, SIGTERM);
++    sigaddset(&sigmask, SIGINT);
++    sigaddset(&sigmask, SIGUSR1);
++    err = pthread_sigmask(SIG_BLOCK, &sigmask, &old);
++    if (err)
++        DPRINTF("%s thread %d(%d) change SIG_BLOCK failed err-%d\n",
++                VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset, err);
++
++    sigfd = signalfd(-1, &sigmask, 0);
++    ts = timeout.tv_sec * 1000 + timeout.tv_nsec / 1000000;
++
++    while(1) {
++        DPRINTF("%s thread %d(%d) start poll on timeout %d\n",
++                VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset, ts);
++        memset(pollfds, 0, sizeof(pollfds));
++        pollfds[0].fd = vline->fd;
++        pollfds[0].events = POLLIN | POLLPRI;
++        pollfds[1].fd = sigfd;
++        pollfds[1].events = POLLIN | POLLPRI;
++        err = poll(pollfds, 2, ts);
++        if (err < 0) {
++            DPRINTF("%s thread %d(%d) fail to poll err-%d\n",
++                    VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset, err);
++            goto out;
++        } else if (err == 0) {
++            DPRINTF("%s thread %d(%d) timeout on polling err-%d\n",
++                    VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset, err);
++        } else {
++            /* Stop poll when line fd closed */
++            if (pollfds[0].revents & (POLLHUP | POLLNVAL)) {
++                DPRINTF("%s thread %d(%d) line closed, stop poll\n",
++                        VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset);
++                goto out;
++            }
++            /* Stop poll when receiving terminate */
++            if (pollfds[1].revents & POLLIN) {
++                DPRINTF("%s thread %d(%d) receives terminate signal, stop poll\n",
++                        VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset);
++                goto out;
++            }
++
++            rd = read(vline->fd, &ev_data, sizeof(ev_data));
++            if (rd != sizeof(struct gpioevent_data)) {
++                DPRINTF("%s thread %d(%d) fail to read gpioevent_data, read %ld\n",
++                        VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset, rd);
++                goto out;
++            }
++            vline->irq.ts = ev_data.timestamp;
++            vline->irq.event = ev_data.id;
++            vline->irq.stat_rx++;
++            if ((ev_data.id != GPIOEVENT_EVENT_RISING_EDGE) &&
++                (ev_data.id != GPIOEVENT_EVENT_FALLING_EDGE)) {
++                DPRINTF("%s thread %d(%d) received unknown id %d at %lld\n",
++                    VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset,
++                    ev_data.id, ev_data.timestamp);
++                goto out;
++
++            } else {
++                DPRINTF("%s thread %d(%d) received %s(%d) at %lld\n",
++                    VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset,
++                    (ev_data.id == GPIOEVENT_EVENT_RISING_EDGE) ? "RISING EDGE" : "FALLING EDGE",
++                    ev_data.id, ev_data.timestamp);
++
++                /* Jitter protection */
++                if ((ev_data.id == GPIOEVENT_EVENT_RISING_EDGE &&
++                    (vline->irq.type & IRQ_TYPE_EDGE_RISING ||
++                    vline->irq.type & IRQ_TYPE_LEVEL_HIGH)) ||
++                    (ev_data.id == GPIOEVENT_EVENT_FALLING_EDGE &&
++                    (vline->irq.type & IRQ_TYPE_EDGE_FALLING ||
++                    vline->irq.type & IRQ_TYPE_LEVEL_LOW))) {
++                    virtio_gpio_irq_generate_intr(vline);
++                }
++            }
++        }
++    }
++
++out:
++    close(sigfd);
++
++    DPRINTF("%s thread %d(%d) restore old sigmask \n",
++            VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset);
++    err = pthread_sigmask(SIG_SETMASK, &old, NULL);
++    if (err)
++        DPRINTF("%s thread %d(%d) restore old sigmask failed err-%d\n",
++                VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset, err);
++
++    DPRINTF("%s thread %d(%d) exit\n",
++            VIRTIO_GPIO_NAME_IRQ, vline->voffset, vline->offset);
++    return NULL;
++}
++
++static int virtio_gpio_open_hgpio_line_irq(gpio_line *vline)
++{
++    struct gpioevent_request ev_req = {0};
++
++    if (!vline || !vline->vgpio ||!vline->chip || !vline->chip->fd)
++        return -EINVAL;
++
++    if (vline->bypass) {
++        DPRINTF("pin %d(%d) is set to bypass\n", vline->voffset, vline->offset);
++        goto out;
++    }
++
++    /* Follow gpiolib.c logic to validate flags, should never fail */
++    if (lineevent_validate_flags(vline->event_events)) {
++        DPRINTF("Unsupported GPIOEVENT_REQUEST flags %x to line %d(%d)\n",
++                vline->event_events, vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    ev_req.lineoffset = vline->offset;
++    ev_req.handleflags = vline->handle_flags;
++    ev_req.eventflags = vline->event_events;
++    strncpy(ev_req.consumer_label, VIRTIO_GPIO_NAME_IRQ,
++            sizeof(ev_req.consumer_label) - 1);
++
++    /* The caller should handle the close and re-open logic */
++    if (vline->fd) {
++        DPRINTF("pin %d(%d) already opened\n", vline->voffset, vline->offset);
++        goto out;
++    } else {
++        char thread_name[64] = {0};
++
++        snprintf(thread_name, sizeof(thread_name), "%s-event-%d",
++                 VIRTIO_GPIO_NAME_IRQ, vline->voffset);
++
++        if (ioctl(vline->chip->fd, GPIO_GET_LINEEVENT_IOCTL, &ev_req) < 0) {
++            DPRINTF("GPIO_GET_LINEEVENT_IOCTL failed on %s pin %d(%d) flags(0x%08x) events(0x%08x)\n",
++                    vline->chip->name, vline->voffset, vline->offset, ev_req.handleflags, ev_req.eventflags);
++            return -EINVAL;
++        }
++        vline->fd = ev_req.fd;
++        /* Update latest handle_flags, event_events and event */
++        vline->handle_flags = ev_req.handleflags;
++        vline->event_events = ev_req.eventflags;
++
++        virtio_gpio_hgpio_get_value(vline);
++        vline->irq.event = vline->last_get ?
++            GPIOEVENT_EVENT_RISING_EDGE : GPIOEVENT_EVENT_FALLING_EDGE;
++
++        vline->irq.on = true;
++
++        qemu_thread_create(&vline->irq.ev_thread, VIRTIO_GPIO_NAME_IRQ,
++                           virtio_gpio_event_thread, vline,
++                           QEMU_THREAD_JOINABLE);
++
++        DPRINTF("pin %d(%d) opened for LINEEVENT with flags(0x%08x) events(0x%08x)\n",
++                vline->voffset, vline->offset, vline->handle_flags, vline->event_events);
++    }
++
++out:
++    /* Make sure line info are up-to-date */
++    return virtio_gpio_update_vlineinfo(vline);
++}
++
++static int virtio_gpio_hgpio_irq_enable(gpio_line *vline)
++{
++    int rc = -EINVAL;
++
++    if (!vline)
++        return -EINVAL;
++
++    if (vline->bypass)
++        return 0;
++
++    if (vline->used) {
++        DPRINTF("pin %d(%d) is used by kernel\n", vline->voffset, vline->offset);
++        return -EINVAL;
++    }
++
++    if (vline->fd) {
++        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_INPUT)) {
++            DPRINTF("pin %d(%d) incorrect flags(0x%08x) for IRQ\n",
++                    vline->voffset, vline->offset, vline->handle_flags);
++        } else {
++            DPRINTF("pin %d(%d) already opened for output_direction\n",
++                    vline->voffset, vline->offset);
++            rc = 0;
++        }
++    } else {
++        rc = virtio_gpio_open_hgpio_line_irq(vline);
++    }
++
++    return rc;
++}
++
++static int virtio_gpio_hgpio_irq_disable(gpio_line *vline)
++{
++    if (vline->bypass)
++        return 0;
++    else
++        return virtio_gpio_close_hgpio_line(vline);
++}
++
++static int virtio_gpio_hgpio_irq_ack(gpio_line *vline)
++{
++    if (vline->bypass)
++        return 0;
++
++    if (virtio_gpio_irq_clear_intr(vline) < 0)
++        return -EINVAL;
++
++    if (virtio_gpio_irq_has_pending_intr(vline))
++        return virtio_gpio_irq_generate_intr(vline);
++    else
++        return 0;
++}
++
++static int virtio_gpio_hgpio_irq_mask(gpio_line *vline)
++{
++    vline->irq.mask = true;
++    return 0;
++}
++
++static int virtio_gpio_hgpio_irq_unmask(gpio_line *vline)
++{
++    vline->irq.mask = false;
++
++    if (vline->bypass)
++        return 0;
++
++    if (virtio_gpio_irq_has_pending_intr(vline))
++        return virtio_gpio_irq_generate_intr(vline);
++    else
++        return 0;
++}
++
++static int virtio_irq_req_handler(VirtIOGpio *vgpio, virtio_gpio_irq_request *req)
++{
++    virtio_gpio_config *cfg = &vgpio->config;
++    gpio_line *vline = NULL;
++    int rc = -EINVAL;
++
++    if (!vgpio || !req)
++        goto out;
++
++    virtio_irq_print_req(req);
++
++    if (req->action >= IRQ_ACTION_MAX) {
++        DPRINTF("Invalid IRQ_ACTION %d\n", req->action);
++        goto out;
++    }
++
++    if (req->pin >= cfg->ngpio) {
++        DPRINTF("Invalid pin %d\n", req->pin);
++        goto out;
++    }
++
++    vline = &vgpio->vlines[req->pin];
++    if (!vline->chip && &vline->chip->fd) {
++        DPRINTF("Host gpio chip %s isn't opened for pin %d\n",
++                vline->chip->name, req->pin);
++        DPRINTF("%d\n", cfg->ngpio);
++        goto out;
++    }
++
++    if (!(vline->handle_flags & GPIOHANDLE_REQUEST_INPUT)) {
++        DPRINTF("pin %d(%d) isn't set to input\n", vline->voffset, vline->offset);
++        goto out;
++    }
++
++    rc = virtio_gpio_update_hgpio_irq_req(vline, req);
++    if (rc < 0) {
++        DPRINTF("Fail to update for IRQ_ACTION %d\n", req->action);
++        goto out;
++    }
++
++    switch (req->action) {
++    case IRQ_ACTION_ENABLE:
++        rc = virtio_gpio_hgpio_irq_enable(vline);
++        break;
++    case IRQ_ACTION_DISABLE:
++        rc = virtio_gpio_hgpio_irq_disable(vline);
++        break;
++    case IRQ_ACTION_ACK:
++        rc = virtio_gpio_hgpio_irq_ack(vline);
++        break;
++    case IRQ_ACTION_MASK:
++        rc = virtio_gpio_hgpio_irq_mask(vline);
++        break;
++    case IRQ_ACTION_UNMASK:
++        rc = virtio_gpio_hgpio_irq_unmask(vline);
++        break;
++    default:
++        DPRINTF("Unsupported IRQ_ACTION %d\n", req->action);
++        rc = -EINVAL;
++        break;
++    }
++
++out:
++    return rc;
++}
++
++static void virtio_irq_notify(VirtIODevice *vdev, VirtQueue *vq)
++{
++    VirtIOGpio *vgpio = VIRTIO_GPIO(vdev);
++
++    if (!virtio_queue_ready(vq)) {
++        DPRINTF("vq_irq isn't ready\n");
++        return;
++    }
++
++    for (;;) {
++        VirtQueueElement *elem;
++        struct iovec *out_iov;
++        size_t len = 0;
++
++        elem = virtqueue_pop(vq, sizeof(VirtQueueElement));
++        if (!elem)
++            break;
++
++        out_iov = elem->out_sg;
++
++        DPRINTF("vq_irq index(%d) len(%d) ndescs(%d) out_num(%d) in_num(%d)\n",
++                elem->index, elem->len, elem->ndescs, elem->out_num, elem->in_num);
++
++        if (elem->in_num == 0 && elem->out_num == 1) {
++            virtio_gpio_irq_request req = {0};
++
++            len = iov_to_buf(out_iov, elem->out_num, 0, &req, sizeof(req));
++            if (unlikely(len != sizeof(req))) {
++                virtio_error(vdev, "virtio-gpio insufficient to_buf from vq\n");
++                virtqueue_detach_element(vq, elem, 0);
++                g_free(elem);
++                break;
++            }
++            virtio_irq_req_handler(vgpio, &req);
++        } else {
++            virtio_error(vdev, "virtio-gpio unsupported buffer number in(%d) out(%d)\n",
++                         elem->in_num, elem->out_num);
++            virtqueue_detach_element(vq, elem, 0);
++            g_free(elem);
++            break;
++        }
++        virtqueue_push(vq, elem, len);
++        virtio_notify(vdev, vq);
++        g_free(elem);
++    }
++}
++
++static void virtio_irq_evt_notify(VirtIODevice *vdev, VirtQueue *vq)
++{
++    if (!virtio_queue_ready(vq)) {
++        DPRINTF("vq_irq_ev isn't ready\n");
++        return;
++    }
++
++    for (;;) {
++        VirtQueueElement *elem;
++
++        elem = virtqueue_pop(vq, sizeof(VirtQueueElement));
++        if (!elem)
++            break;
++
++        DPRINTF("vq_irq_ev index(%d) len(%d) ndescs(%d) out_num(%d) in_num(%d)\n",
++                elem->index, elem->len, elem->ndescs, elem->out_num, elem->in_num);
++        DPRINTF("VirtQueue vq_irq_ev received unexpected data\n");
++
++        virtqueue_push(vq, elem, 0);
++        virtio_notify(vdev, vq);
++        g_free(elem);
++    }
++}
++
++static void virtio_gpio_init_internal(VirtIOGpio *vgpio)
++{
++    strncpy(vgpio->name, VIRTIO_GPIO_NAME, sizeof(vgpio->name) - 1);
++    vgpio->config.base = 0;
++    vgpio->config.ngpio = 0;
++    QLIST_INIT(&vgpio->hgpio_list);
++    memset(&vgpio->vlines, 0, sizeof(vgpio->vlines));
++    memset(&vgpio->irq, 0, sizeof(vgpio->irq));
++    qemu_mutex_init(&vgpio->irq.mutex);
++}
++
++static void virtio_gpio_destroy_internal(VirtIOGpio *vgpio)
++{
++    vgpio->config.base = 0;
++    vgpio->config.ngpio = 0;
++    memset(&vgpio->vlines, 0, sizeof(vgpio->vlines));
++    qemu_mutex_destroy(&vgpio->irq.mutex);
++}
++
++static void virtio_gpio_init_framework(VirtIODevice *vdev)
++{
++    VirtIOGpio *vgpio = VIRTIO_GPIO(vdev);
++
++    virtio_init(vdev, "virtio-gpio", VIRTIO_ID_GPIO, sizeof(virtio_gpio_config));
++    vgpio->vq_gpio = virtio_add_queue(vdev, VIRTIO_GPIO_VQ_SIZE, virtio_gpio_notify);
++    vgpio->vq_irq = virtio_add_queue(vdev, VIRTIO_GPIO_VQ_SIZE, virtio_irq_notify);
++    vgpio->vq_irq_ev = virtio_add_queue(vdev, VIRTIO_GPIO_VQ_SIZE, virtio_irq_evt_notify);
++}
++
++static void virtio_gpio_destroy_framework(VirtIODevice *vdev)
++{
++    virtio_del_queue(vdev, 0);
++    virtio_del_queue(vdev, 1);
++    virtio_del_queue(vdev, 2);
++    virtio_cleanup(vdev);
++}
++
++static void virtio_gpio_open_hgpio_chip(VirtIOGpio *vgpio, Error **errp)
++{
++    gpio_desc *chip;
++    gpio_line *vline;
++    int i = 0;
++
++    for (i = 0; i < vgpio->config.ngpio; i++) {
++        vline = &vgpio->vlines[i];
++
++        assert(i == vline->voffset);
++
++        chip = vline->chip;
++        if (chip) {
++            uint32_t flags = 0;
++
++            if (!chip->fd) {
++                char chippath[64] = {0};
++
++                snprintf(chippath, sizeof(chippath), "/dev/%s", chip->name);
++                chip->fd = open(chippath, O_RDWR | O_CLOEXEC);
++                if (chip->fd < 0) {
++                    error_setg(errp, "Can't open host GPIO controller:\n%s",
++                               chip->name);
++                    error_append_hint(errp, "Make sure %s exists and can be "
++                                      "opened with O_RDWR|O_CLOEXEC\n",
++                                      chip->name);
++                    goto err;
++                } else {
++                    DPRINTF("%s(%s) opened\n", chip->name, chip->label);
++                }
++            }
++
++            /* Get gpioline_info before 1st open */
++            virtio_gpio_update_vlineinfo(vline);
++            if (vline->dir)
++                flags |= GPIOHANDLE_REQUEST_INPUT;
++            else
++                flags |= GPIOHANDLE_REQUEST_OUTPUT;
++            if (vline->astate)
++                flags |= GPIOHANDLE_REQUEST_ACTIVE_LOW;
++            if (vline->open_drain)
++                flags |= GPIOHANDLE_REQUEST_OPEN_DRAIN;
++            if (vline->open_source)
++                flags |= GPIOHANDLE_REQUEST_OPEN_SOURCE;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
++            if (vline->bias_pull_up)
++                flags |= GPIOHANDLE_REQUEST_BIAS_PULL_UP;
++            if (vline->bias_pull_down)
++                flags |= GPIOHANDLE_REQUEST_BIAS_PULL_DOWN;
++            if (vline->bias_pull_disable)
++                flags |= GPIOHANDLE_REQUEST_BIAS_DISABLE;
++#endif
++            /*
++             * Open line with initial flags, later open will only modify based
++             * on previous used flags instead of overwrite to new value.
++             */
++            if (virtio_gpio_open_hgpio_line(vline, flags, 0) < 0) {
++                error_setg(errp, "Open line failed: pin %d(%d)",
++                           i, vline->offset);
++                goto err;
++            }
++        } else {
++            DPRINTF("Host gpio chip not set fot vline: pin %d(%d)\n",
++                    i, vline->offset);
++            goto err;
++        }
++    }
++err:
++    return;
++}
++
++static void virtio_gpio_close_hgpio_chip(VirtIOGpio *vgpio)
++{
++    gpio_desc *node, *next = NULL;
++    int i;
++
++    for (i = 0; i < vgpio->config.ngpio; i++)
++        virtio_gpio_close_hgpio_line(&vgpio->vlines[i]);
++
++    QLIST_FOREACH_SAFE(node, &vgpio->hgpio_list, next, next) {
++        if (node->fd) {
++            close(node->fd);
++            DPRINTF("%s closed\n", node->name);
++        }
++        QLIST_REMOVE(node, next);
++        g_free(node);
++    }
++}
++
++static void virtio_gpio_parse_params(DeviceState *dev, Error **errp)
++{
++    VirtIOGpio *vgpio = VIRTIO_GPIO(dev);
++    virtio_gpio_config *cfg = &vgpio->config;
++    Error *err = NULL;
++    const QObject *param_json = NULL;
++    const QDict *params = NULL;
++    const QList *pinmaps = NULL;
++    QNum *qnum = NULL;
++    const QListEntry *entry = NULL;
++    int64_t val = 0;
++    uint16_t base = 0; /* FixMe: gpio_chip{} defines base as 'int' */
++    uint16_t ngpio = 0;
++    int fd;
++
++    if (!vgpio->param_str) {
++        error_setg(errp, "GPIO 'config' not set");
++        error_append_hint(errp, "GPIO 'config' is required for GPIO\n");
++        goto err;
++    }
++
++    param_json = qobject_from_json(vgpio->param_str, &err);
++    if (!param_json) {
++        error_propagate(errp, err);
++        error_append_hint(errp, "GPIO 'config' in json format is required\n");
++        goto err;
++    }
++
++    params = qobject_to(QDict, param_json);
++    if (!params) {
++        error_setg(errp, "Fail to parse GPIO 'config' json as dictionary:\n%s",
++                   qobject_to_json_pretty(QOBJECT(param_json))->string);
++        error_append_hint(errp, "GPIO 'config' must be specified as dictionary\n");
++        goto err;
++    }
++
++    if (qdict_haskey(params, "base")) {
++        qnum = qobject_to(QNum, qdict_get(params, "base"));
++        if (!qnum) {
++            error_setg(errp, "Can't parse VirtIO GPIO 'base':\n%s",
++                       qobject_to_json_pretty(qdict_get(params, "base"))->string);
++            error_append_hint(errp, "Require optional 'base' specified as "
++                              "integer. Default base set to 0 if 'base' ignored.\n");
++            goto err;
++        }
++        val = qdict_get_try_int(params, "base", 0);
++        if (val > INT_MAX || val < INT_MIN) {
++            base = 0;
++            error_setg(errp, "GPIO 'base' %ld is too large", val);
++            error_append_hint(errp, "struct gpio_chip{} defines base as 'int'.\n");
++            goto err;
++        } else {
++            base = (uint16_t)val;
++        }
++    } else {
++        base = 0;
++    }
++
++    DPRINTF("config 'base' set to %d\n", base);
++
++    pinmaps = qdict_get_qlist(params, "map");
++    if (!pinmaps || qlist_empty(pinmaps)) {
++        error_setg(errp, "GPIO pin 'map' list is not set");
++        error_append_hint(errp, "Require 'map' list to select GPIO pin(s)\n");
++        goto err;
++    }
++
++    /* Validate gpio chip, pin, pin name before setting the mapping */
++    QLIST_FOREACH_ENTRY(pinmaps, entry) {
++        const QDict *pinmap = NULL;
++        const char *chipname;
++        char chippath[64] = {0};
++        gpio_line *vline = NULL;
++        const char *pinname = NULL;
++        gpio_desc *node = NULL;
++        struct gpiochip_info chipinfo = {0};
++        struct gpioline_info lineinfo = {0};
++        bool bypass = false;
++        int i = 0;
++
++        pinmap = qobject_to(QDict, entry->value);
++        if (!pinmap) {
++            error_setg(errp, "Can't parse host GPIO pin 'map' as dictionary:\n%s",
++                       qobject_to_json_pretty(entry->value)->string);
++            error_append_hint(errp, "Require 'map' list to select GPIO pin\n");
++            goto err;
++        }
++
++        chipname = qdict_get_try_str(pinmap, "chip");
++        if (!chipname) {
++            error_setg(errp, "Can't get host GPIO 'chip' name from:\n%s",
++                       qobject_to_json_pretty(entry->value)->string);
++            error_append_hint(errp, "Require 'chip' specified as selected host "
++                              "GPIO controller name as part of '/dev/gpiochip*'\n");
++            goto err;
++        }
++
++        /* Try to open host gpio controller once to check the existence */
++        snprintf(chippath, sizeof(chippath), "/dev/%s", chipname);
++        fd = open(chippath, O_RDWR | O_CLOEXEC);
++        if (fd < 0) {
++            error_setg(errp, "Can't open host GPIO controller:\n%s", chipname);
++            error_append_hint(errp, "Make sure %s exists and can be opened with"
++                              " O_RDWR|O_CLOEXEC\n", chipname);
++            goto err;
++        }
++
++        /* Save non-repeat host gpio name, label, lines for later host init */
++        node = virtio_gpio_find_hgpio_byname(vgpio, chipname);
++        if (!node) {
++            node = memset(g_malloc(sizeof(gpio_desc)), 0, sizeof(gpio_desc));
++
++            if (node) {
++                memset(&chipinfo, 0, sizeof(struct gpiochip_info));
++                if (ioctl(fd, GPIO_GET_CHIPINFO_IOCTL, &chipinfo) < 0) {
++                    error_setg(errp, "GPIO_GET_CHIPINFO_IOCTL failed on %s",
++                               chipname);
++                    goto err_list;
++                }
++
++                strncpy(node->name, chipinfo.name, sizeof(node->name) - 1);
++                strncpy(node->label, chipinfo.label, sizeof(node->label) - 1);
++                node->lines = chipinfo.lines;
++                QLIST_INSERT_HEAD(&vgpio->hgpio_list, node, next);
++            } else {
++                error_setg(errp, "g_malloc failed: gpio_desc for %s", chipname);
++                goto err_chip;
++            }
++        }
++
++        /* Make sure selected pin is available */
++        qnum = qobject_to(QNum, qdict_get(pinmap, "pin"));
++        if (qdict_haskey(pinmap, "pin") && qnum && qnum_get_try_int(qnum, &val)) {
++            if (val < 0 || val >= node->lines) {
++                error_setg(errp, "Selected GPIO 'pin' is invalid:\n%s",
++                           qobject_to_json_pretty(entry->value)->string);
++                error_append_hint(errp, "%s(%s) has %d lines\n",
++                                  node->name, node->label, node->lines);
++                goto err_list;
++            }
++
++            memset(&lineinfo, 0, sizeof(struct gpioline_info));
++            lineinfo.line_offset = val;
++            if (ioctl(fd, GPIO_GET_LINEINFO_IOCTL, &lineinfo) < 0) {
++                error_setg(errp, "GPIO_GET_LINEINFO_IOCTL failed on %s pin %d(%d)",
++                           chipinfo.name, ngpio, lineinfo.line_offset);
++                goto err_list;
++            }
++        } else {
++            error_setg(errp, "Can't parse selected GPIO 'pin' from pin map:\n%s",
++                       qobject_to_json_pretty(entry->value)->string);
++            error_append_hint(errp, "Require 'pin' specified as integer\n");
++            goto err_list;
++        }
++
++        /* Make sure no duplicate host pin mapped to virtual pin */
++        for (i = 0; i < ngpio; i++) {
++            if (val == vgpio->vlines[i].offset) {
++                error_setg(errp, "Duplicated GPIO pin(%ld) from %s set",
++                           val, chipname);
++                goto err_list;
++            }
++        }
++
++        /* Get optional pin name */
++        pinname = qdict_get_try_str(pinmap, "name");
++        if (qdict_haskey(pinmap, "name")) {
++            if (!qobject_to(QString, qdict_get(pinmap, "name"))){
++                error_setg(errp, "Can't parse VirtIO GPIO pin 'name':\n%s",
++                           qobject_to_json_pretty(qdict_get(pinmap, "name"))->string);
++                error_append_hint(errp, "Specify optional pin 'name' as string. "
++                                  "Original name from host is used if 'name' not set.\n");
++                goto err_list;
++            } else {
++                if (strlen(pinname) > sizeof((gpio_line *)0)->vname - 1) {
++                    error_setg(errp, "Can't get VirtIO GPIO pin 'name' from:\n%s",
++                               pinname);
++                    error_append_hint(errp, "Make sure 'name' isn't too long "
++                                      "(current:%ld) for pin name'\n",
++                                      strlen(pinname));
++                    goto err_list;
++                }
++            }
++        }
++
++        /* Get optional bypass property */
++        if (qdict_haskey(pinmap, "bypass")) {
++            QBool *qb = qobject_to(QBool, qdict_get(pinmap, "bypass"));
++
++            if (!qb) {
++                error_setg(errp, "Can't parse VirtIO GPIO pin 'bypass':\n%s",
++                           qobject_to_json_pretty(qdict_get(pinmap, "bypass"))->string);
++                error_append_hint(errp, "Specify optional pin 'bypass' as bool (true or false). "
++                                  "Default value is false if 'bypass' not set.\n");
++                goto err_list;
++            } else {
++                bypass = qb->value;
++            }
++        }
++
++        /* Save host gpio_desc, offset and virtual name, offset for later init */
++        vline = &vgpio->vlines[ngpio];
++        vline->vgpio = vgpio;
++        vline->chip = node;
++        strncpy(vline->vname,
++                pinname ? pinname : lineinfo.name, sizeof(vline->vname) - 1);
++        vline->voffset = ngpio;
++        vline->offset = (uint32_t)val;
++        vline->bypass = bypass;
++        ngpio++;
++
++        DPRINTF("config 'map': pin % 3d: %s pin %d, name '%s', bypass %d\n",
++                vline->voffset, chipname, vline->offset, pinname ? pinname : "",
++                bypass);
++
++        close(fd);
++    }
++
++    if (ngpio > VIRTIO_GPIO_MAX_VLINES) {
++        error_setg(errp, "Too many VirtIO GPIO pins selected:\n"
++                   "current(%d) max(%d)", ngpio, VIRTIO_GPIO_MAX_VLINES);
++        goto err_vline;
++    }
++
++    cfg->base = base;
++    cfg->ngpio = ngpio;
++
++    DPRINTF("VirtIO GPIO config json validated\n");
++
++    return;
++
++err_vline:
++    virtio_gpio_destroy_internal(vgpio);
++err_list:
++    virtio_gpio_close_hgpio_chip(vgpio);
++err_chip:
++    if (fd)
++        close(fd);
++err:
++    return;
++}
++
++static void virtio_gpio_device_realize(DeviceState *dev, Error **errp)
++{
++    VirtIODevice *vdev = VIRTIO_DEVICE(dev);
++    VirtIOGpio *vgpio = VIRTIO_GPIO(dev);
++    Error *err = NULL;
++
++    virtio_gpio_init_framework(vdev);
++    virtio_gpio_init_internal(vgpio);
++
++    virtio_gpio_parse_params(dev, &err);
++    if (err != NULL) {
++        error_propagate(errp, err);
++        return;
++    }
++
++    virtio_gpio_open_hgpio_chip(vgpio, &err);
++    if (err != NULL) {
++        error_propagate(errp, err);
++        return;
++    }
++
++    virtio_gpio_print_hgpio_info(vgpio);
++    virtio_gpio_print_vgpio_info(vgpio);
++}
++
++static void virtio_gpio_device_unrealize(DeviceState *dev, Error **errp)
++{
++    VirtIODevice *vdev = VIRTIO_DEVICE(dev);
++    VirtIOGpio *vgpio = VIRTIO_GPIO(dev);
++
++    virtio_gpio_close_hgpio_chip(vgpio);
++    virtio_gpio_destroy_internal(vgpio);
++    virtio_gpio_destroy_framework(vdev);
++}
++
++static void virtio_gpio_get_config(VirtIODevice *vdev, uint8_t *config)
++{
++    VirtIOGpio *vgpio = VIRTIO_GPIO(vdev);
++    memcpy(config, &vgpio->config, sizeof(vgpio->config));
++}
++
++static void virtio_gpio_set_config(VirtIODevice *vdev, const uint8_t *config)
++{
++    VirtIOGpio *vgpio = VIRTIO_GPIO(vdev);
++
++    memcpy(&vgpio->config, config, sizeof(vgpio->config));
++}
++
++static uint64_t virtio_gpio_get_features(VirtIODevice *vdev, uint64_t features,
++                                        Error **errp)
++{
++    virtio_add_feature(&features, GPIO_VIRTIO_F_CHIP);
++    return features;
++}
++
++static void virtio_gpio_class_init(ObjectClass *klass, void *data)
++{
++    DeviceClass *dc = DEVICE_CLASS(klass);
++    VirtioDeviceClass *vdc = VIRTIO_DEVICE_CLASS(klass);
++
++    dc->props = virtio_gpio_properties;
++    dc->vmsd = &vmstate_virtio_gpio;
++    set_bit(DEVICE_CATEGORY_MISC, dc->categories);
++    vdc->realize = virtio_gpio_device_realize;
++    vdc->unrealize = virtio_gpio_device_unrealize;
++    vdc->get_config = virtio_gpio_get_config;
++    vdc->set_config = virtio_gpio_set_config;
++    vdc->get_features = virtio_gpio_get_features;
++}
++
++static const TypeInfo virtio_gpio_info = {
++    .name          = TYPE_VIRTIO_GPIO,
++    .parent        = TYPE_VIRTIO_DEVICE,
++    .instance_size = sizeof(VirtIOGpio),
++    .class_init    = virtio_gpio_class_init,
++};
++
++static void virtio_register_types(void)
++{
++    type_register_static(&virtio_gpio_info);
++}
++
++type_init(virtio_register_types)
+diff --git a/hw/i386/Kconfig b/hw/i386/Kconfig
+index 5a494342eaa0..520d038f1668 100644
+--- a/hw/i386/Kconfig
++++ b/hw/i386/Kconfig
+@@ -115,3 +115,7 @@ config VMPORT
+ config VMMOUSE
+     bool
+     depends on VMPORT
++
++config VIRTIO_GPIO
++    bool
++    depends on LINUX
+diff --git a/include/hw/pci/pci.h b/include/hw/pci/pci.h
+index db75c6dfd05e..1b7ea30946f2 100644
+--- a/include/hw/pci/pci.h
++++ b/include/hw/pci/pci.h
+@@ -86,6 +86,7 @@ extern bool pci_available;
+ #define PCI_DEVICE_ID_VIRTIO_9P          0x1009
+ #define PCI_DEVICE_ID_VIRTIO_VSOCK       0x1012
+ #define PCI_DEVICE_ID_VIRTIO_PMEM        0x1013
++#define PCI_DEVICE_ID_VIRTIO_GPIO        0x103F
+
+ #define PCI_VENDOR_ID_REDHAT             0x1b36
+ #define PCI_DEVICE_ID_REDHAT_BRIDGE      0x0001
+diff --git a/include/hw/virtio/virtio-gpio.h b/include/hw/virtio/virtio-gpio.h
+new file mode 100644
+index 000000000000..fe1847d28dc3
+--- /dev/null
++++ b/include/hw/virtio/virtio-gpio.h
+@@ -0,0 +1,234 @@
++/*
++ * GPIO VirtIO Backend Driver
++ * GPIO VirtIO backend defines
++ *
++ * Copyright (C) 2020, Intel Corporation. All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License version
++ * 2 as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
++ * 02110-1301, USA.
++ *
++ *
++ * Author: Colin Xu <Colin.Xu@intel.com>
++ *
++ */
++
++#ifndef QEMU_VIRTIO_GPIO_H
++#define QEMU_VIRTIO_GPIO_H
++
++#include <linux/version.h>
++#include <sys/sysinfo.h>
++
++#include "hw/virtio/virtio.h"
++#include "hw/virtio/virtio-pci.h"
++#include "standard-headers/linux/virtio_ids.h"
++
++/* #define DEBUG_VIRTIO_GPIO */
++
++#ifdef DEBUG_VIRTIO_GPIO
++#define DPRINTF(fmt, ...) do { \
++        printf("[%ld]virtio_gpio: " fmt , get_clock(), ## __VA_ARGS__); \
++    } while (0)
++#else
++#define DPRINTF(fmt, ...) do { } while (0)
++#endif
++
++/* linux/irq.h */
++#define IRQ_TYPE_NONE 0x00000000
++#define IRQ_TYPE_EDGE_RISING 0x00000001
++#define IRQ_TYPE_EDGE_FALLING 0x00000002
++#define IRQ_TYPE_LEVEL_HIGH 0x00000004
++#define IRQ_TYPE_LEVEL_LOW 0x00000008
++#define IRQ_TYPE_EDGE_BOTH (IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_EDGE_RISING)
++#define IRQ_TYPE_LEVEL_MASK (IRQ_TYPE_LEVEL_LOW | IRQ_TYPE_LEVEL_HIGH)
++
++#define GPIO_VIRTIO_F_CHIP 0
++
++#define TYPE_VIRTIO_GPIO_PCI_BASE "virtio-gpio-pci-base"
++#define TYPE_VIRTIO_GPIO_PCI "virtio-gpio-pci"
++#define TYPE_VIRTIO_GPIO_PCI_TRANS "virtio-gpio-pci-transitional"
++#define TYPE_VIRTIO_GPIO_PCI_NON_TRANS "virtio-gpio-pci-non-transitional"
++#define TYPE_VIRTIO_GPIO "virtio-gpio-device"
++#define VIRTIO_GPIO_VM_VERSION 1
++#define VIRTIO_GPIO_VQ_SIZE 64
++
++#define VIRTIO_GPIO_PCI(obj) \
++        OBJECT_CHECK(VirtIOGpioPCI, (obj), TYPE_VIRTIO_GPIO_PCI_BASE)
++#define VIRTIO_GPIO(obj) \
++        OBJECT_CHECK(VirtIOGpio, (obj), TYPE_VIRTIO_GPIO)
++
++/* Default Virtio GPIO name */
++#define VIRTIO_GPIO_NAME_GPIO "Virtio-GPIO"
++#define VIRTIO_GPIO_NAME_IRQ "Virtio-GPIO-IRQ"
++#define VIRTIO_GPIO_NAME VIRTIO_GPIO_NAME_GPIO
++
++/* Maximum vlines supported by Virtio GPIO, uint64_t is used as IRQ bit mask */
++#define VIRTIO_GPIO_MAX_VLINES 64
++
++/* */
++#define VIRTIO_GPIO_IRQ_POLL_INT_SEC -1
++
++/* Uses the same packed config format as generic pinconf. */
++#define PIN_CONF_UNPACKED(p) ((unsigned long) p & 0xffUL)
++
++typedef enum pin_config_param {
++    PIN_CONFIG_BIAS_BUS_HOLD,
++    PIN_CONFIG_BIAS_DISABLE,
++    PIN_CONFIG_BIAS_HIGH_IMPEDANCE,
++    PIN_CONFIG_BIAS_PULL_DOWN,
++    PIN_CONFIG_BIAS_PULL_PIN_DEFAULT,
++    PIN_CONFIG_BIAS_PULL_UP,
++    PIN_CONFIG_DRIVE_OPEN_DRAIN,
++    PIN_CONFIG_DRIVE_OPEN_SOURCE,
++    PIN_CONFIG_DRIVE_PUSH_PULL,
++    PIN_CONFIG_DRIVE_STRENGTH,
++    PIN_CONFIG_DRIVE_STRENGTH_UA,
++    PIN_CONFIG_INPUT_DEBOUNCE,
++    PIN_CONFIG_INPUT_ENABLE,
++    PIN_CONFIG_INPUT_SCHMITT,
++    PIN_CONFIG_INPUT_SCHMITT_ENABLE,
++    PIN_CONFIG_LOW_POWER_MODE,
++    PIN_CONFIG_OUTPUT_ENABLE,
++    PIN_CONFIG_OUTPUT,
++    PIN_CONFIG_POWER_SOURCE,
++    PIN_CONFIG_SLEEP_HARDWARE_STATE,
++    PIN_CONFIG_SLEW_RATE,
++    PIN_CONFIG_SKEW_DELAY,
++    PIN_CONFIG_PERSIST_STATE,
++    PIN_CONFIG_END = 0x7F,
++    PIN_CONFIG_MAX = 0xFF,
++} pin_config_param;
++
++typedef enum virtio_gpio_request_command {
++    GPIO_REQ_SET_VALUE = 0,
++    GPIO_REQ_GET_VALUE = 1,
++    GPIO_REQ_INPUT_DIRECTION = 2,
++    GPIO_REQ_OUTPUT_DIRECTION = 3,
++    GPIO_REQ_GET_DIRECTION = 4,
++    GPIO_REQ_SET_CONFIG = 5,
++    GPIO_REQ_MAX
++} virtio_gpio_request_command;
++
++typedef enum gpio_irq_action {
++    IRQ_ACTION_ENABLE = 0,
++    IRQ_ACTION_DISABLE,
++    IRQ_ACTION_ACK,
++    IRQ_ACTION_MASK,
++    IRQ_ACTION_UNMASK,
++    IRQ_ACTION_MAX
++} gpio_irq_action ;
++
++typedef struct __attribute__ ((packed)) virtio_gpio_request {
++    uint8_t cmd;
++    uint8_t offset;
++    uint64_t data;
++} virtio_gpio_request;
++
++typedef struct __attribute__ ((packed)) virtio_gpio_response {
++    int8_t err;
++    uint8_t data;
++} virtio_gpio_response;
++
++typedef struct __attribute__ ((packed)) virtio_gpio_io {
++    struct virtio_gpio_request req;
++    struct virtio_gpio_response rsp;
++} virtio_gpio_io;
++
++typedef struct __attribute__ ((packed)) virtio_gpio_data {
++    char name[32];
++} virtio_gpio_data;
++
++typedef struct __attribute__ ((packed)) virtio_gpio_config {
++    uint16_t base; /* base number */
++    uint16_t ngpio; /* number of gpios */
++} virtio_gpio_config;
++
++typedef struct __attribute__ ((packed)) virtio_gpio_irq_request {
++    uint8_t action;
++    uint8_t pin;
++    uint8_t mode;
++} virtio_gpio_irq_request;
++
++typedef struct gpio_desc {
++    char name[32]; /* host gpio chip name */
++    char label[32]; /* host gpio chip label */
++    int fd; /* host gpio chip fd */
++    uint32_t lines; /* host gpio chip number of lines */
++    QLIST_ENTRY(gpio_desc) next;
++} gpio_desc;
++
++typedef struct irq_data {
++    QemuThread ev_thread; /* Per-line thread to receive LINEEVENT */
++    bool on; /* GPIO line is in IRQ mode */
++    uint8_t type; /* IRQ_TYPE_* */
++    bool mask; /* IRQ is masked or not */
++    uint64_t ts; /* last timestamp from gpioevent_data{} */
++    uint32_t event; /* last id from gpioevent_data{} */
++    uint64_t stat_rx; /* LINEEVENT received from host */
++    uint64_t stat_tx; /* LINEEVENT delivered to front end */
++} irq_data;
++
++typedef struct VirtIOGpio VirtIOGpio;
++typedef struct gpio_line {
++    VirtIOGpio* vgpio; /* VIRTIO_GPIO */
++    gpio_desc* chip; /* host gpio chip gpio_desc */
++    int fd; /* host gpio line fd for GPIO/IRQ mode */
++    char vname[32]; /* virtual gpio line name */
++    uint32_t voffset; /* offset in virtual chip */
++    char name[32]; /* host gpio line name */
++    char consumer[32]; /* host gpio line consumer */
++    uint32_t offset; /* host gpio line offset */
++    bool bypass; /* bypass host gpio access */
++    uint32_t flags; /* host gpio line info flags */
++    int dir; /* direction */
++    bool used; /* GPIOLINE_FLAG_KERNEL, not used by VirtIO GPIO */
++    bool astate; /* GPIOLINE_FLAG_ACTIVE_LOW */
++    /* Below 5 flags can be set via set_config */
++    bool open_drain; /* GPIOLINE_FLAG_OPEN_DRAIN */
++    bool open_source; /* GPIOLINE_FLAG_OPEN_SOURCE */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
++    bool bias_pull_up; /* GPIOLINE_FLAG_BIAS_PULL_UP */
++    bool bias_pull_down; /* GPIOLINE_FLAG_BIAS_PULL_DOWN */
++    bool bias_pull_disable; /* GPIOLINE_FLAG_BIAS_DISABLE */
++#endif
++    uint32_t handle_flags; /* last host gpio line GPIOHANDLE_REQUEST_ flags */
++    uint32_t last_set; /* last value read from this line */
++    uint32_t last_get; /* last value written to this line */
++    uint32_t event_events; /* last host gpio line GPIOEVENT_REQUEST_ flags */
++    irq_data irq; /* irq data for this gpio */
++} gpio_line;
++
++typedef struct chip_irq_data {
++    QemuMutex mutex;
++    uint64_t pending;
++    uint64_t service;
++    uint64_t stat;
++} chip_irq_data;
++
++typedef struct VirtIOGpio {
++    VirtIODevice parent_obj;
++    char *param_str;
++    char name[32];
++    virtio_gpio_config config;
++    QLIST_HEAD(, gpio_desc) hgpio_list;
++    struct gpio_line vlines[VIRTIO_GPIO_MAX_VLINES];
++    chip_irq_data irq;
++    VirtQueue *vq_gpio, *vq_irq, *vq_irq_ev;
++} VirtIOGpio;
++
++typedef struct VirtIOGpioPCI {
++    VirtIOPCIProxy parent_obj;
++    VirtIOGpio vdev;
++} VirtIOGpioPCI;
++
++#endif /* QEMU_VIRTIO_GPIO_H */
+diff --git a/include/standard-headers/linux/virtio_ids.h b/include/standard-headers/linux/virtio_ids.h
+index 585e07b27333..b00d28d56597 100644
+--- a/include/standard-headers/linux/virtio_ids.h
++++ b/include/standard-headers/linux/virtio_ids.h
+@@ -46,5 +46,6 @@
+ #define VIRTIO_ID_IOMMU        23 /* virtio IOMMU */
+ #define VIRTIO_ID_FS           26 /* virtio filesystem */
+ #define VIRTIO_ID_PMEM         27 /* virtio pmem */
++#define VIRTIO_ID_GPIO         28 /* virtio GPIO */
+
+ #endif /* _LINUX_VIRTIO_IDS_H */
+--
+2.28.0
