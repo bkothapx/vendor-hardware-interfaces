@@ -1,0 +1,186 @@
+From 38f37fcd1232f3e259159c9b26893956cae7d95f Mon Sep 17 00:00:00 2001
+From: Colin Xu <colin.xu@intel.com>
+Date: Fri, 28 Aug 2020 12:57:50 +0800
+Subject: [PATCH] Update start_civ.sh to support below features
+
+- Append ACPI SSDT to guest.
+- Enable I2C controller pass through.
+- Eable VirtIO GPIO.
+
+The 3 features are independent to each other. However, since the context
+lines are very close, applying them one by one will cause conflicts so
+merge to a single patch.
+
+Change-Id: I810a7bd47eb6da46812e5442e514d5495736bbb8
+Tracked-On: OAM-92368
+Signed-off-by: Colin Xu <colin.xu@intel.com>
+---
+ scripts/start_civ.sh | 104 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 104 insertions(+)
+
+diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
+index a526e4ad8339..67982daa696b 100755
+--- a/scripts/start_civ.sh
++++ b/scripts/start_civ.sh
+@@ -38,6 +38,9 @@ GUEST_UDC_PT_DEV=
+ GUEST_AUDIO_PT_DEV=
+ GUEST_ETH_PT_DEV=
+ GUEST_WIFI_PT_DEV=
++GUEST_ACPI_SSDT=
++GUEST_I2C_PT_DEV=
++GUEST_VIRTIO_GPIO=
+ GUEST_PM_CTRL=
+ GUEST_TIME_KEEP=
+ GUSET_VTPM="-chardev socket,id=chrtpm,path=$WORK_DIR/vtpm0/swtpm-sock -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-crb,tpmdev=tpm0"
+@@ -386,6 +389,62 @@ function set_block_dev() {
+     [ ! -z $1 ] && GUEST_BLK_DEV+="-drive file=$1,format=raw"
+ }
+
++function set_acpi_ssdt() {
++    local sku=$1
++    local ssdt_dsl="$WORK_DIR/skucfg/${sku}/ssdt.dsl"
++    local ssdt_aml="$WORK_DIR/${sku}_ssdt.aml"
++    local ssdt_headless_aml="$WORK_DIR/${sku}_ssdt_headless.aml"
++
++    # Genereate SSDT if selected SKU version doesn't exist
++    if [[ ! -f "${ssdt_headless_aml}" ]]; then
++        if [[ ! -f "${ssdt_dsl}" ]]; then
++            printf "SSDT for ${sku} not found\n"
++        else
++            # Delete old ssdt generation
++            if [[ -f "${ssdt_aml}" ]]; then
++                rm ${ssdt_aml}
++            fi
++            # Compile dsl to aml
++            iasl -Pn -vs -p ${ssdt_aml} ${ssdt_dsl} > /dev/null 2>&1
++            if [ $? = "0" ]; then
++                # Strip header
++                dd if=${ssdt_aml} of=${ssdt_headless_aml} bs=1 skip=36 > /dev/null 2>&1
++                # Delete useless aml
++                if [[ -f "${ssdt_aml}" ]]; then
++                    rm ${ssdt_aml}
++                fi
++            fi
++            if [[ -f "${ssdt_headless_aml}" ]]; then
++                printf "SSDT for ${sku} is successfully generated.\n"
++            else
++                printf "Failed to generate SSDT for ${sku}\n"
++            fi
++        fi
++    fi
++    if [[ -f "${ssdt_headless_aml}" ]]; then
++        GUEST_ACPI_SSDT="-acpitable sig=SSDT,rev=1,oem_id=INTEL,oem_table_id=INTLSSDT,oem_rev=1,asl_compiler_id=iasl,asl_compiler_rev=20190509,data=${ssdt_headless_aml}"
++    fi
++}
++
++function set_virtio_gpio() {
++    local sku=$1
++    local gpiomap_file="${WORK_DIR}/skucfg/${sku}/virtio_gpio.map"
++    local gpiomap=()
++    local gpiocfg=()
++    local idx=0
++    if [[ -f "${gpiomap_file}" ]]; then
++        IFS=$'\n' read -d '' -r -a gpiomap < $gpiomap_file
++        for elem in "${gpiomap[@]}"; do
++            if [[ "${elem}" != \#* ]]; then
++                gpiocfg+=("${elem}")
++            fi
++        done
++    fi
++    if [[ ${#gpiocfg[@]} -ge 2 ]]; then
++        GUEST_VIRTIO_GPIO="-device virtio-gpio-pci,id=virtio-gpio,bus=pcie.0,addr=${gpiocfg[0]},config='${gpiocfg[1]}'"
++    fi
++}
++
+ function set_extra_qcmd() {
+     GUEST_EXTRA_QCMD=$1
+ }
+@@ -477,6 +536,31 @@ function set_pt_wifi() {
+     fi
+ }
+
++function set_pt_i2c() {
++    local I2C_PCI=()
++    local idx=0
++    while IFS= read -r line; do
++        I2C_PCI+=( "${line}" )
++    done < <( lspci -D |grep -i "I2C Controller" | grep -o "....:..:..\.." )
++    echo "passthrough I2C controller:"
++    for i2c in "${I2C_PCI[@]}"; do
++        echo "  ${i2c}"
++        local bdf=()
++        IFS=':' read -ra bdf <<< "$i2c"
++        if [[ $1 == "unset" ]]; then
++            set_pt_pci_vfio $i2c "unset"
++        else
++            set_pt_pci_vfio $i2c
++            GUEST_I2C_PT_DEV="${GUEST_I2C_PT_DEV} -device vfio-pci,host=${i2c#*:},id=host-i2c-$idx,bus=pcie.0,addr=0x${bdf[${#bdf[@]}-1]}"
++            # Multifunction requires option multifunction=on
++            if [[ "${i2c}" == *.0 ]]; then
++                GUEST_I2C_PT_DEV="${GUEST_I2C_PT_DEV},multifunction=on"
++            fi
++        fi
++        idx=$((idx+1))
++    done
++}
++
+ function set_guest_pm() {
+     local guest_pm_ctrl_daemon=$SCRIPTS_DIR/guest_pm_control
+     if [ -f $guest_pm_ctrl_daemon ]; then
+@@ -555,6 +639,9 @@ function launch_guest() {
+               $GUEST_AUDIO_PT_DEV \
+               $GUEST_ETH_PT_DEV \
+               $GUEST_WIFI_PT_DEV \
++              $GUEST_ACPI_SSDT \
++              $GUEST_I2C_PT_DEV \
++              $GUEST_VIRTIO_GPIO \
+               $GUEST_PM_CTRL \
+               $GUEST_TIME_KEEP \
+               $GUEST_POWER_BUTTON \
+@@ -586,12 +673,15 @@ function show_help() {
+     printf "\t-s  specify guest share folder path, eg. \"-s /path/to/share/with/guest\"\n"
+     printf "\t-p  specify host forward ports, current support adb/fastboot, eg. \"-p adb=6666,fastboot=7777\"\n"
+     printf "\t-b  specify host block device as guest virtual device, eg.\" -b /dev/mmcblk0 \"\n"
++    printf "\t-ssdt  specify extra per-SKU ACPI ssdt table to guest, eg.\" -ssdt <sku> \"\n"
++    printf "\t-vgpio  specify extra per-SKU VirtIO GPIO mapping to guest, eg.\" -vgpio <sku> \"\n"
+     printf "\t-e  specify extra qemu cmd, eg. \"-e \"-full-screen -monitor stdio\"\"\n"
+     printf "\t--passthrough-pci-usb passthrough USB PCI bus to guest.\n"
+     printf "\t--passthrough-pci-udc passthrough USB Device Controller ie. UDC PCI bus to guest.\n"
+     printf "\t--passthrough-pci-audio passthrough Audio PCI bus to guest.\n"
+     printf "\t--passthrough-pci-eth passthrough Ethernet PCI bus to guest.\n"
+     printf "\t--passthrough-pci-wifi passthrough WiFi PCI bus to guest.\n"
++    printf "\t--passthrough-pci-i2c passthrough PCI I2C controller to guest.\n"
+     printf "\t--thermal-mediation enable thermal mediation.\n"
+     printf "\t--battery-mediation enable battery mediation.\n"
+     printf "\t--guest-pm-control allow guest control host PM.\n"
+@@ -653,6 +743,16 @@ function parse_arg() {
+                 shift
+                 ;;
+
++            -ssdt)
++                set_acpi_ssdt $2
++                shift
++                ;;
++
++            -vgpio)
++                set_virtio_gpio $2
++                shift
++                ;;
++
+             -e)
+                 set_extra_qcmd "$2"
+                 shift
+@@ -678,6 +778,10 @@ function parse_arg() {
+                 set_pt_wifi
+                 ;;
+
++            --passthrough-pci-i2c)
++                set_pt_i2c
++                ;;
++
+             --thermal-mediation)
+                 setup_thermal_mediation
+                 ;;
+--
+2.28.0
+
