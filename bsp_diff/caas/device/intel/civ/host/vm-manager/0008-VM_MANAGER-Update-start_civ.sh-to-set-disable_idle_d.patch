@@ -1,0 +1,33 @@
+From e825f740a94d5563d82bfd39602fddf54c68506b Mon Sep 17 00:00:00 2001
+From: Colin Xu <colin.xu@intel.com>
+Date: Wed, 2 Sep 2020 15:07:42 +0800
+Subject: [PATCH] VM_MANAGER: Update start_civ.sh to set disable_idle_d3 for
+ vfio-pci
+
+Add disable_idle_d3=1 to vfio-pci modprobe.
+Otherwise, vfio-pci will put I2C controller into D3 and guest intel-lpss
+can't bring it back to D0.
+
+Change-Id: I64464a89f194eff826d50bd60216a511f4e1a635
+Tracked-On: OAM-92671
+Signed-off-by: Colin Xu <colin.xu@intel.com>
+---
+ scripts/start_civ.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
+index a526e4ad8339..ba780fc53961 100755
+--- a/scripts/start_civ.sh
++++ b/scripts/start_civ.sh
+@@ -394,7 +394,7 @@ function set_pt_pci_vfio() {
+     local PT_PCI=$1
+     local unset=$2
+     if [ ! -z $PT_PCI ]; then
+-        sudo sh -c "modprobe vfio-pci"
++        sudo sh -c "modprobe vfio-pci disable_idle_d3=1"
+         local iommu_grp_dev="/sys/bus/pci/devices/$PT_PCI/iommu_group/devices/*"
+         for d in $iommu_grp_dev; do
+             local pci=$(basename $d)
+--
+2.28.0
+
