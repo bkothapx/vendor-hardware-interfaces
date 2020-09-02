@@ -1,0 +1,55 @@
+From 9ef814ccd74b32a7756245c2e528521f6df5c05d Mon Sep 17 00:00:00 2001
+From: Colin Xu <colin.xu@intel.com>
+Date: Wed, 2 Sep 2020 13:45:21 +0800
+Subject: [PATCH] VM_MANAGER: Update setup_host.sh to append more kernel args
+
+I2C pass through requires below kernel boot parameters:
+vfio_iommu_type1.allow_unsafe_interrupts=1
+vfio-pci.disable_idle_d3=1
+
+Change-Id: Ie2d12337b0abaddb28037aed1ce62b70810978de
+Tracked-On: OAM-92665
+Signed-off-by: Colin Xu <colin.xu@intel.com>
+---
+ scripts/setup_host.sh | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/scripts/setup_host.sh b/scripts/setup_host.sh
+index cbb9c455ce58..03a87341c1bb 100755
+--- a/scripts/setup_host.sh
++++ b/scripts/setup_host.sh
+@@ -118,6 +118,23 @@ function ubu_enable_host_gvt(){
+     fi
+ }
+
++function ubu_append_host_grub(){
++    local expect=$1
++    local grub_cfg="/etc/default/grub"
++    local exist=$(sed -En "/^GRUB_CMDLINE_LINUX=.*${expect}.*$/p" ${grub_cfg})
++    # Append kernel config to default grub cmdline if not found
++    if [[ -z "${exist}" ]]; then
++        sed -in "s/^\(GRUB_CMDLINE_LINUX=.*\)\"$/\1 ${expect}\"/g" ${grub_cfg}
++        update-grub
++        reboot_required=1
++    fi
++}
++
++function ubu_enable_additional_kernel_params(){
++    ubu_append_host_grub "vfio_iommu_type1.allow_unsafe_interrupts=1"
++    ubu_append_host_grub "vfio-pci.disable_idle_d3=1"
++}
++
+ function check_os() {
+     local version=`cat /proc/version`
+
+@@ -318,6 +335,7 @@ ubu_changes_require
+ ubu_install_qemu_gvt
+ ubu_build_ovmf_gvt
+ ubu_enable_host_gvt
++ubu_enable_additional_kernel_params
+
+ prepare_required_scripts
+ ubu_thermal_conf
+--
+2.28.0
+
