@@ -1,0 +1,33 @@
+From bf309060dd55bc4214c5804a507df9d730e14e2a Mon Sep 17 00:00:00 2001
+From: Zhuocheng Ding <zhuocheng.ding@intel.com>
+Date: Sun, 13 Sep 2020 13:00:54 +0800
+Subject: [PATCH] Add VirtIO I2C to caas kernel config
+
+Change-Id: Ifcad5ce675156ae072519a7907ddc8b0b9eb3f97
+Tracked-On: OAM-92874
+Signed-off-by: Zhuocheng Ding <zhuocheng.ding@intel.com>
+
+diff --git a/caas/config-lts/lts2019-chromium/caas_diffconfig b/caas/config-lts/lts2019-chromium/caas_diffconfig
+index 286ea75..7fdf944 100644
+--- a/caas/config-lts/lts2019-chromium/caas_diffconfig
++++ b/caas/config-lts/lts2019-chromium/caas_diffconfig
+@@ -28,3 +28,4 @@ CONFIG_DRM_QXL=y
+ CONFIG_OVERLAY_FS=y
+ CONFIG_GPIO_GENERIC=y
+ CONFIG_GPIO_VIRTIO=y
++CONFIG_I2C_VIRTIO=y
+diff --git a/caas/config-lts/lts2019-chromium/x86_64_defconfig b/caas/config-lts/lts2019-chromium/x86_64_defconfig
+index ebed5eb..246511c 100644
+--- a/caas/config-lts/lts2019-chromium/x86_64_defconfig
++++ b/caas/config-lts/lts2019-chromium/x86_64_defconfig
+@@ -2800,6 +2800,7 @@ CONFIG_I2C_ALGOBIT=y
+ #
+ # PC SMBus host controller drivers
+ #
++CONFIG_I2C_VIRTIO=y
+ # CONFIG_I2C_ALI1535 is not set
+ # CONFIG_I2C_ALI1563 is not set
+ # CONFIG_I2C_ALI15X3 is not set
+--
+2.25.1
+
