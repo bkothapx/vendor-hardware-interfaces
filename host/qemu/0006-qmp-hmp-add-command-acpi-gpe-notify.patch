@@ -1,0 +1,137 @@
+From 0493dd344a75ed8875d8dd5c90aca28f370002a2 Mon Sep 17 00:00:00 2001
+From: Yan Zhao <yan.y.zhao@intel.com>
+Date: Tue, 15 Sep 2020 09:13:02 +0800
+Subject: [PATCH 2/3] qmp/hmp: add command acpi-gpe-notify
+
+{ \"execute\": \"acpi-gpe-notify\", \"arguments\": { \"id\" :
+\"\\\_SB.WMIV\", \"val1\" : 0x81, \"val2\" : 0 } }"
+
+Signed-off-by: Yan Zhao <yan.y.zhao@intel.com>
+---
+ hmp-commands.hx       | 15 +++++++++++++++
+ hw/misc/acpi_proxy.c  | 15 +++++++++++++++
+ include/monitor/hmp.h |  1 +
+ monitor/hmp-cmds.c    | 11 +++++++++++
+ qapi/misc.json        | 23 +++++++++++++++++++++++
+ 5 files changed, 65 insertions(+)
+
+diff --git a/hmp-commands.hx b/hmp-commands.hx
+index cfcc044ce4..9bb004a04e 100644
+--- a/hmp-commands.hx
++++ b/hmp-commands.hx
+@@ -1886,6 +1886,21 @@ STEXI
+ @findex qemu-io
+ Executes a qemu-io command on the given block device.
+
++ETEXI
++
++    {
++        .name       = "acpi-gpe-notify",
++        .args_type  = "id:s,val1:l,val2:l",
++        .params     = "id val1 val2",
++        .help       = "send acpi gpe notify event with event path and two event values\n\t\t\t",
++        .cmd        = hmp_acpi_gpe_notify,
++    },
++STEXI
++@item acpi-gpe-notify @var{id} @var{val1} @var{val2}
++@findex acpi-gpe-notify
++end ACPI GPE with @id and @var{val1} @var{val2}.
++
++
+ ETEXI
+
+     {
+diff --git a/hw/misc/acpi_proxy.c b/hw/misc/acpi_proxy.c
+index ce6e3847b7..41dfc0d644 100644
+--- a/hw/misc/acpi_proxy.c
++++ b/hw/misc/acpi_proxy.c
+@@ -299,6 +299,21 @@ static void acpi_proxy_device_class_init(ObjectClass *klass, void *data)
+     dc->user_creatable = true;
+ }
+
++void qmp_acpi_gpe_notify(const char *id, int64_t val1,
++                         int64_t val2, Error **errp)
++{
++    bool ambig;
++    Object *acpi_obj = object_resolve_path_type("",
++                                               TYPE_ACPI_DEVICE_IF, &ambig);
++    Object *obj = object_resolve_path_type("", TYPE_ACPI_PROXY, &ambig);
++    if (obj && acpi_obj) {
++        ACPIProxyState *s = ACPI_PROXY(obj);
++        memset(s->cmd_trap, 0, REGION_TRAP_SIZE);
++    } else {
++        error_report("command is not supported, missing ACPI device");
++    }
++}
++
+ static const TypeInfo acpi_proxy_device_info = {
+     .name          = TYPE_ACPI_PROXY,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+diff --git a/include/monitor/hmp.h b/include/monitor/hmp.h
+index a0e9511440..40e9c6424b 100644
+--- a/include/monitor/hmp.h
++++ b/include/monitor/hmp.h
+@@ -112,6 +112,7 @@ void hmp_chardev_add(Monitor *mon, const QDict *qdict);
+ void hmp_chardev_change(Monitor *mon, const QDict *qdict);
+ void hmp_chardev_remove(Monitor *mon, const QDict *qdict);
+ void hmp_chardev_send_break(Monitor *mon, const QDict *qdict);
++void hmp_acpi_gpe_notify(Monitor *mon, const QDict *qdict);
+ void hmp_qemu_io(Monitor *mon, const QDict *qdict);
+ void hmp_cpu_add(Monitor *mon, const QDict *qdict);
+ void hmp_object_add(Monitor *mon, const QDict *qdict);
+diff --git a/monitor/hmp-cmds.c b/monitor/hmp-cmds.c
+index b2551c16d1..5e164abdfb 100644
+--- a/monitor/hmp-cmds.c
++++ b/monitor/hmp-cmds.c
+@@ -2456,6 +2456,17 @@ void hmp_chardev_remove(Monitor *mon, const QDict *qdict)
+     hmp_handle_error(mon, &local_err);
+ }
+
++void hmp_acpi_gpe_notify(Monitor *mon, const QDict *qdict)
++{
++    Error *local_err = NULL;
++
++    qmp_acpi_gpe_notify(qdict_get_str(qdict, "id"),
++            qdict_get_try_int(qdict, "val1", -1),
++            qdict_get_try_int(qdict, "val2", 0),
++            &local_err);
++    hmp_handle_error(mon, &local_err);
++}
++
+ void hmp_chardev_send_break(Monitor *mon, const QDict *qdict)
+ {
+     Error *local_err = NULL;
+diff --git a/qapi/misc.json b/qapi/misc.json
+index 33b94e3589..72607e9823 100644
+--- a/qapi/misc.json
++++ b/qapi/misc.json
+@@ -1753,3 +1753,26 @@
+ ##
+ { 'command': 'query-vm-generation-id', 'returns': 'GuidInfo' }
+
++##
++# @acpi-gpe-notify:
++#
++# ACPI GPE NOTIFY
++#
++# @id: the event object path for this GPE notification
++# @val1: the first notification value
++# @val2: the second notification value
++#
++# Returns: Nothing on success
++#
++# Since: 1.4
++#
++# Example:
++#
++# -> { "execute": "acpi-gpe-notify", "arguments": { "id" : "foo", "val1" : -1, "val2" : 0 } }
++# <- { "return": {} }
++#
++##
++{ 'command': 'acpi-gpe-notify',
++  'data': { 'id': 'str',
++            'val1': 'int',
++            'val2': 'int' } }
+--
+2.17.1
+
