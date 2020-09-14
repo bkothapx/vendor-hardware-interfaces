@@ -1,0 +1,33 @@
+From 3064d108c24ef2321b6929c04be302793835f912 Mon Sep 17 00:00:00 2001
+From: Yan Zhao <yan.y.zhao@intel.com>
+Date: Mon, 17 Aug 2020 14:34:47 +0800
+Subject: [PATCH] reserve memory range from 0x7fd7f000 to 0x7fd85fff for ACPI
+ PROXY device
+
+Signed-off-by: Yan Zhao <yan.y.zhao@intel.com>
+---
+ OvmfPkg/PlatformPei/MemDetect.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/OvmfPkg/PlatformPei/MemDetect.c b/OvmfPkg/PlatformPei/MemDetect.c
+index 3b46ea4..614d719 100644
+--- a/OvmfPkg/PlatformPei/MemDetect.c
++++ b/OvmfPkg/PlatformPei/MemDetect.c
+@@ -823,7 +823,13 @@ InitializeRamRegions (
+   } else {
+     XenPublishRamRegions ();
+   }
+-
++
++  BuildMemoryAllocationHob (
++    0x7fd7f000,
++    0x7000,
++    EfiACPIMemoryNVS
++    );
++
+   if (mS3Supported && mBootMode != BOOT_ON_S3_RESUME) {
+     //
+     // This is the memory range that will be used for PEI on S3 resume
+--
+2.7.4
+
