@@ -1,0 +1,123 @@
+From d41ff7813f5813081227fedeb56f1b7ed6febc49 Mon Sep 17 00:00:00 2001
+From: Zhuocheng Ding <zhuocheng.ding@intel.com>
+Date: Mon, 14 Sep 2020 12:56:38 +0800
+Subject: [PATCH] Update SKU-specific configurations to include VirtIO I2C
+ support
+
+Change-Id: I4e9129807c1001d66b2d65c966cd70bd9c9fb3bf
+Tracked-On: OAM-92885
+Signed-off-by: Zhuocheng Ding <zhuocheng.ding@intel.com>
+
+diff --git a/groups/device-specific/caas/BoardConfig.mk b/groups/device-specific/caas/BoardConfig.mk
+index ed454fc..85fc74d 100644
+--- a/groups/device-specific/caas/BoardConfig.mk
++++ b/groups/device-specific/caas/BoardConfig.mk
+@@ -18,6 +18,7 @@ BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/findall.py
+ BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/setup_host.sh
+ BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/skucfg/tasmania/ssdt.dsl
+ BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/skucfg/tasmania/virtio_gpio.map
++BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/skucfg/tasmania/virtio_i2c.map
+ BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/sof_audio/configure_sof.sh
+ BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/sof_audio/blacklist-dsp.conf
+ BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/setup_audio_host.sh
+diff --git a/groups/device-specific/caas/product.mk b/groups/device-specific/caas/product.mk
+index 48e9896..6c6dd9d 100755
+--- a/groups/device-specific/caas/product.mk
++++ b/groups/device-specific/caas/product.mk
+@@ -43,6 +43,7 @@ PRODUCT_COPY_FILES += $(LOCAL_PATH)/intel-thermal-conf.xml:$(PRODUCT_OUT)/script
+ PRODUCT_COPY_FILES += $(LOCAL_PATH)/thermald.service:$(PRODUCT_OUT)/scripts/thermald.service
+ PRODUCT_COPY_FILES += $(LOCAL_PATH)/skucfg/tasmania/ssdt.dsl:$(PRODUCT_OUT)/scripts/skucfg/tasmania/ssdt.dsl
+ PRODUCT_COPY_FILES += $(LOCAL_PATH)/skucfg/tasmania/virtio_gpio.map:$(PRODUCT_OUT)/scripts/skucfg/tasmania/virtio_gpio.map
++PRODUCT_COPY_FILES += $(LOCAL_PATH)/skucfg/tasmania/virtio_i2c.map:$(PRODUCT_OUT)/scripts/skucfg/tasmania/virtio_i2c.map
+ PRODUCT_COPY_FILES += device/intel/civ/host/vm-manager/scripts/start_civ.sh:$(PRODUCT_OUT)/scripts/start_civ.sh
+ PRODUCT_COPY_FILES += device/intel/civ/host/vm-manager/scripts/setup_host.sh:$(PRODUCT_OUT)/scripts/setup_host.sh
+ PRODUCT_COPY_FILES += device/intel/civ/host/vm-manager/scripts/guest_time_keeping.sh:$(PRODUCT_OUT)/scripts/guest_time_keeping.sh
+diff --git a/groups/device-specific/caas/skucfg/tasmania/ssdt.dsl b/groups/device-specific/caas/skucfg/tasmania/ssdt.dsl
+index dbc0b1e..fe5eea3 100644
+--- a/groups/device-specific/caas/skucfg/tasmania/ssdt.dsl
++++ b/groups/device-specific/caas/skucfg/tasmania/ssdt.dsl
+@@ -25,6 +25,60 @@ DefinitionBlock (
+             }
+         }
+
++        Device (I2C0) {
++            Name (_ADR, 0x00130000)
++            Name (_DDN, "VirtIO I2C Controller")
++            Name (_UID, "VirtIO I2C Controller 0")
++            Name (_STA, 0x0F)
++            Device (NFC0) {
++                Name (_ADR, Zero)  // _ADR: Address
++                Name (_HID, EisaId ("NXP1002"))  // _HID: Hardware ID
++                Name (_CID, "NXP1002")  // _CID: Compatible ID
++                Name (_DDN, "NXP NFC")  // _DDN: DOS Device Name
++                Name (_UID, One)  // _UID: Unique ID
++                Method (_STA, 0, NotSerialized) {
++                    Return (0x0F)
++                }
++                Method (_CRS, 0, Serialized) {
++                    Name (SBUF, ResourceTemplate () {
++                        I2cSerialBusV2 (0x0008, ControllerInitiated, 0x00061A80,
++                            AddressingMode7Bit, "\\_SB.PCI0.I2C0",
++                            0x00, ResourceConsumer, _Y55, Exclusive,
++                            )
++                        GpioInt (Edge, ActiveHigh, ExclusiveAndWake, PullDefault, 0x0000,
++                            "\\_SB.PCI0.GPI0", 0x00, ResourceConsumer, ,
++                            )
++                            {
++                                0x0001
++                            }
++                        GpioIo (Exclusive, PullDefault, 0x0000, 0x0000, IoRestrictionOutputOnly,
++                            "\\_SB.PCI0.GPI0", 0x00, ResourceConsumer, ,
++                            )
++                            {
++                                0x0002
++                            }
++                        GpioIo (Exclusive, PullDefault, 0x0000, 0x0000, IoRestrictionOutputOnly,
++                            "\\_SB.PCI0.GPI0", 0x00, ResourceConsumer, ,
++                            )
++                            {
++                                0x0003
++                            }
++                    })
++                    CreateWordField (SBUF, \_SB.PCI0.I2C0.NFC0._CRS._Y55._ADR, NADR)
++                    CreateDWordField (SBUF, \_SB.PCI0.I2C0.NFC0._CRS._Y55._SPE, NSPD)
++                    //CreateWordField (SBUF, 0x38, NFCA)
++                    //CreateWordField (SBUF, 0x60, NFCB)
++                    //CreateWordField (SBUF, 0x88, NFCC)
++                    NADR = 0x08
++                    NSPD = 0x00061A80
++                    //NFCA = 0x0000
++                    //NFCB = 0x0001
++                    //NFCC = 0x0002
++                    Return (SBUF)
++                }
++            }
++        }
++
+         Device (I2C1) {
+             Name (_ADR, 0x00150001)
+             Device (NFC1) {
+@@ -32,7 +86,7 @@ DefinitionBlock (
+                 Name (_HID, EisaId ("NXP1002"))  // _HID: Hardware ID
+                 Name (_CID, "NXP1002")  // _CID: Compatible ID
+                 Name (_DDN, "NXP NFC")  // _DDN: DOS Device Name
+-                Name (_UID, One)  // _UID: Unique ID
++                Name (_UID, 0x02)  // _UID: Unique ID
+                 Method (_STA, 0, NotSerialized) {
+                     Return (0x0F)
+                 }
+diff --git a/groups/device-specific/caas/skucfg/tasmania/virtio_i2c.map b/groups/device-specific/caas/skucfg/tasmania/virtio_i2c.map
+new file mode 100644
+index 0000000..6862adb
+--- /dev/null
++++ b/groups/device-specific/caas/skucfg/tasmania/virtio_i2c.map
+@@ -0,0 +1,6 @@
++# address of host i2c controller, must match DSDT/SSDT
++0000:00:15.1
++# address of host i2c device (i.e. NFC device), must match DSDT/SSDT
++0x29
++# devfn in guest, must match DSDT/SSDT
++0x13.0
+--
+2.25.1
+
