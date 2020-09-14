@@ -1,20 +1,25 @@
-From e8ffca311d52050852bc45329a21b88037e9eb1a Mon Sep 17 00:00:00 2001
+From 7826b310e36c3ee1a1de49354376db4cbf3ad729 Mon Sep 17 00:00:00 2001
 From: Colin Xu <colin.xu@intel.com>
 Date: Thu, 2 Jul 2020 08:57:48 +0800
 Subject: [PATCH] Add GPIO VirtIO backend driver.
 
-Tracked-On: OAM-92296
+V2:
+- Skip unnecessary irq line closing on receiving irq_disable.
+- Fix typo.
+- Fix KW.
+
+Tracked-On: OAM-92921
 Signed-off-by: Colin Xu <colin.xu@intel.com>
 ---
  default-configs/i386-softmmu.mak            |    1 +
  hw/gpio/Makefile.objs                       |    2 +
  hw/gpio/virtio-gpio-pci.c                   |   86 +
- hw/gpio/virtio-gpio.c                       | 1854 +++++++++++++++++++
+ hw/gpio/virtio-gpio.c                       | 1857 +++++++++++++++++++
  hw/i386/Kconfig                             |    4 +
  include/hw/pci/pci.h                        |    1 +
  include/hw/virtio/virtio-gpio.h             |  234 +++
  include/standard-headers/linux/virtio_ids.h |    1 +
- 8 files changed, 2183 insertions(+)
+ 8 files changed, 2186 insertions(+)
  create mode 100644 hw/gpio/virtio-gpio-pci.c
  create mode 100644 hw/gpio/virtio-gpio.c
  create mode 100644 include/hw/virtio/virtio-gpio.h
@@ -132,10 +137,10 @@ index 000000000000..1c39d40d6abf
 +type_init(virtio_gpio_pci_register)
 diff --git a/hw/gpio/virtio-gpio.c b/hw/gpio/virtio-gpio.c
 new file mode 100644
-index 000000000000..639e2265b129
+index 000000000000..a808d45b9425
 --- /dev/null
 +++ b/hw/gpio/virtio-gpio.c
-@@ -0,0 +1,1854 @@
+@@ -0,0 +1,1857 @@
 +/*
 + * GPIO VirtIO Backend Driver
 + * virtio_gpio
@@ -826,13 +831,15 @@ index 000000000000..639e2265b129
 +#endif
 +    int rc = 0;
 +    bool reopen = false;
-+    uint32_t flags = vline->handle_flags;
++    uint32_t flags = 0;
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
-+    uint32_t bias_flags;
++    uint32_t bias_flags = 0;
 +#endif
 +
 +    if (!vline)
 +        return -EINVAL;
++
++    flags = vline->handle_flags;
 +
 +    DPRINTF("Receive .set_config 0x%lx(%s) to pin %d(%d)\n", config,
 +            pincfgs[PIN_CONF_UNPACKED(config)], vline->voffset, vline->offset);
@@ -925,7 +932,7 @@ index 000000000000..639e2265b129
 +    int rc = -EINVAL;
 +
 +    if (!vgpio || !gpio_io)
-+        goto out;
++        return -EINVAL;
 +
 +    virtio_gpio_print_req(&gpio_io->req);
 +
@@ -1167,7 +1174,7 @@ index 000000000000..639e2265b129
 +    struct pollfd pollfds[2];
 +    struct timespec timeout = { VIRTIO_GPIO_IRQ_POLL_INT_SEC, 0 };
 +    ssize_t rd = 0;
-+    int sigfd, ts, err;
++    int sigfd = 0, ts, err;
 +
 +    if (!vline) {
 +        DPRINTF("%s thread invalid gpio_line\n", VIRTIO_GPIO_NAME_IRQ);
@@ -1350,7 +1357,7 @@ index 000000000000..639e2265b129
 +            DPRINTF("pin %d(%d) incorrect flags(0x%08x) for IRQ\n",
 +                    vline->voffset, vline->offset, vline->handle_flags);
 +        } else {
-+            DPRINTF("pin %d(%d) already opened for output_direction\n",
++            DPRINTF("pin %d(%d) already opened for input_direction\n",
 +                    vline->voffset, vline->offset);
 +            rc = 0;
 +        }
@@ -1365,8 +1372,10 @@ index 000000000000..639e2265b129
 +{
 +    if (vline->bypass)
 +        return 0;
-+    else
-+        return virtio_gpio_close_hgpio_line(vline);
++    // Skip closing irq line on irq_disable
++    //else
++    //    return virtio_gpio_close_hgpio_line(vline);
++    return 0;
 +}
 +
 +static int virtio_gpio_hgpio_irq_ack(gpio_line *vline)
@@ -1678,7 +1687,7 @@ index 000000000000..639e2265b129
 +    int64_t val = 0;
 +    uint16_t base = 0; /* FixMe: gpio_chip{} defines base as 'int' */
 +    uint16_t ngpio = 0;
-+    int fd;
++    int fd = 0;
 +
 +    if (!vgpio->param_str) {
 +        error_setg(errp, "GPIO 'config' not set");
@@ -1775,9 +1784,9 @@ index 000000000000..639e2265b129
 +        /* Save non-repeat host gpio name, label, lines for later host init */
 +        node = virtio_gpio_find_hgpio_byname(vgpio, chipname);
 +        if (!node) {
-+            node = memset(g_malloc(sizeof(gpio_desc)), 0, sizeof(gpio_desc));
-+
++            node = g_malloc(sizeof(gpio_desc));
 +            if (node) {
++                node = memset(node, 0, sizeof(gpio_desc));
 +                memset(&chipinfo, 0, sizeof(struct gpiochip_info));
 +                if (ioctl(fd, GPIO_GET_CHIPINFO_IOCTL, &chipinfo) < 0) {
 +                    error_setg(errp, "GPIO_GET_CHIPINFO_IOCTL failed on %s",
@@ -1901,8 +1910,7 @@ index 000000000000..639e2265b129
 +err_list:
 +    virtio_gpio_close_hgpio_chip(vgpio);
 +err_chip:
-+    if (fd)
-+        close(fd);
++    close(fd);
 +err:
 +    return;
 +}
@@ -2267,3 +2275,4 @@ index 585e07b27333..b00d28d56597 100644
  #endif /* _LINUX_VIRTIO_IDS_H */
 --
 2.28.0
+
