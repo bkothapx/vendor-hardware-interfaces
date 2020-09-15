@@ -1,0 +1,28 @@
+From 78ae5b0c339a61f4b8b99de052c38a73a632b072 Mon Sep 17 00:00:00 2001
+From: rramakax <rohitx.kant@intel.com>
+Date: Tue, 15 Sep 2020 20:26:04 +0530
+Subject: [PATCH] [CIV] Enable disk_based_swap in mixins
+
+Change-Id: I89ab53dedc705c277f7bc3a3d96c0cc417e7967e
+Tracked-On: OAM-91636
+Signed-off-by: rramakax <rohitx.kant@intel.com>
+---
+ caas/mixins.spec | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/caas/mixins.spec b/caas/mixins.spec
+index 2f277a3..20b30a2 100755
+--- a/caas/mixins.spec
++++ b/caas/mixins.spec
+@@ -70,7 +70,7 @@ device-specific: caas
+ hdcpd: true
+ neuralnetworks: true
+ treble: true
+-swap: zram_auto(size=1073741824,swappiness=true,hardware=gordon_peak)
++swap: zram_auto(size=1073741824,swappiness=true,hardware=gordon_peak,disk_based_swap=true)
+ art-config: true
+ psdapp: true
+ debugfs: true
+--
+1.9.1
+
