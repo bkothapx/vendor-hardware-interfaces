@@ -1,0 +1,31 @@
+From 373613ffa35e39006f98a19a593462e2c36d738d Mon Sep 17 00:00:00 2001
+From: mbegumx <mogalx.begum@intel.com>
+Date: Tue, 22 Sep 2020 14:45:52 +0530
+Subject: [PATCH] Fix for VtsHalLightV2_0Target module
+
+Added a check to verify any light devices are supported, if not
+supported disable HW hal support for light service
+
+Tracked-On: OAM-92871
+Signed-off-by: mbegumx <mogalx.begum@intel.com>
+
+diff --git a/lights/lights.c b/lights/lights.c
+index 9e8b197..f35057c 100644
+--- a/lights/lights.c
++++ b/lights/lights.c
+@@ -216,6 +216,12 @@ static int open_lights(const struct hw_module_t *module, char const *name,
+
+   determine_backlight_device();
+
++  /* If none of the light device is supported, disable HW HAL support for light service*/
++  if (!cur_backlight_dev) {
++      ALOGE("Could not find any backlight device");
++      return -EINVAL;
++  }
++
+   dev = malloc(sizeof(struct light_device_t));
+   if (!dev) {
+     ALOGE("Could not allocate memory for lights_device_t!");
+
+2.17.1
+
