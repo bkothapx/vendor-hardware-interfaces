@@ -1,0 +1,106 @@
+From a3a55332d6dc9d58758a31789e9a09282e6a26a3 Mon Sep 17 00:00:00 2001
+From: "Prajapati, ravindrax" <ravindrax.prajapati@intel.com>
+Date: Thu, 24 Sep 2020 12:30:50 +0530
+Subject: [PATCH] [CIV] Adding performance point data to media codec file
+
+Tracked-On: OAM-93039
+Signed-off-by: Prajapati, ravindrax <ravindrax.prajapati@intel.com>
+
+diff --git a/groups/codecs/configurable/media_codecs.xml b/groups/codecs/configurable/media_codecs.xml
+index 7833e7d..c9aaf2d 100644
+--- a/groups/codecs/configurable/media_codecs.xml
++++ b/groups/codecs/configurable/media_codecs.xml
+@@ -84,6 +84,7 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+             <Feature name="adaptive-playback" />
+         </MediaCodec>
+ {{/hw_vd_vc1}}
+@@ -97,6 +98,7 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+             <Feature name="adaptive-playback" />
+         </MediaCodec>
+ {{/hw_vd_h264}}
+@@ -109,6 +111,7 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+             <Feature name="adaptive-playback" />
+             <Feature name="secure-playback" required="true" />
+         </MediaCodec>
+@@ -121,6 +124,7 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+             <Feature name="adaptive-playback" />
+         </MediaCodec>
+ {{/hw_vd_vp8}}
+@@ -132,6 +136,7 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+             <Feature name="adaptive-playback" />
+         </MediaCodec>
+ {{/hw_vd_vp9}}
+@@ -143,6 +148,7 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+             <Feature name="adaptive-playback" />
+         </MediaCodec>
+ {{/hw_vd_h265}}
+@@ -154,6 +160,7 @@ Only the three quirks included above are recognized at this point:
+            <Limit name="block-size" value="16x16" />
+            <Limit name="blocks-per-second" range="1-972000" />
+            <Limit name="bitrate" range="1-40000000" />
++           <Limit name="performance-point-3840x2160" value="30" />
+            <Feature name="adaptive-playback" />
+            <Feature name="secure-playback" required="true" />
+         </MediaCodec>
+@@ -166,6 +173,7 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+             <Feature name="adaptive-playback" />
+         </MediaCodec>
+ {{/hw_vd_mp2}}
+@@ -179,9 +187,9 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+         </MediaCodec>
+ {{/hw_ve_h264}}
+-
+ {{#hw_ve_vp8}}
+         <MediaCodec name="OMX.Intel.hw_ve.vp8" type="video/x-vnd.on2.vp8" >
+             <Limit name="size" min="176x144" max="3840x2160" />
+@@ -189,6 +197,7 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+         </MediaCodec>
+ {{/hw_ve_vp8}}
+ {{#hw_ve_h265}}
+@@ -198,6 +207,7 @@ Only the three quirks included above are recognized at this point:
+             <Limit name="block-size" value="16x16" />
+             <Limit name="blocks-per-second" range="1-972000" />
+             <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
+         </MediaCodec>
+ {{/hw_ve_h265}}
+     </Encoders>
+--
+2.17.1
+
