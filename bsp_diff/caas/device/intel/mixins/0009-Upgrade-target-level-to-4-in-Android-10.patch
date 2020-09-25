@@ -1,0 +1,96 @@
+From 7a1360404274a406c01ab40f0e09f55b1be9da54 Mon Sep 17 00:00:00 2001
+From: Tanuj Tekriwal <tanuj.tekriwal@intel.com>
+Date: Fri, 11 Sep 2020 13:16:21 +0530
+Subject: [PATCH] Upgrade target-level to 4 in Android 10
+
+This patch fixes the target level required for
+Android 10 to 4 in device manifest.
+
+Changing the target-level to 4 will require the below
+changes:
+- The kernel config is the dependency for the target
+  level 4.
+- graphics mapper HAL version needed for target level 4
+  is >= 2.1
+
+Shipping FCM Version should be >= 4 if Shipping API level == 29.
+This is the hard requirement for Android 10 set by Google.
+This can be found in the Google GMS requirement document.
+
+Add mapper 2.1 support
+
+This change is to help support mapper 2.1
+
+Change-Id: Ia996773d6aa2060444f1e4415db1b49ffb763c5c
+Tracked-On: OAM-92918
+Signed-off-by: Tanuj Tekriwal <tanuj.tekriwal@intel.com>
+Signed-off-by: Ren Chenglei <chenglei.ren@intel.com>
+Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
+---
+ groups/device-specific/caas/manifest.xml                      | 4 ++--
+ groups/device-specific/caas/product.mk                        | 1 +
+ .../gmin64/config-lts/lts2019-chromium/x86_64_defconfig       | 2 +-
+ .../kernel/gmin64/config-lts/lts2019-yocto/x86_64_defconfig   | 2 +-
+ 4 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/groups/device-specific/caas/manifest.xml b/groups/device-specific/caas/manifest.xml
+index be4135f..82f62d2 100644
+--- a/groups/device-specific/caas/manifest.xml
++++ b/groups/device-specific/caas/manifest.xml
+@@ -1,5 +1,5 @@
+ {{^ota-update}}
+-<manifest version="1.0" type="device" target-level="3">
++<manifest version="1.0" type="device" target-level="4">
+ {{/ota-update}}
+ {{#ota-update}}
+ <manifest version="1.0" type="device">
+@@ -108,7 +108,7 @@
+     <hal format="hidl">
+         <name>android.hardware.graphics.mapper</name>
+         <transport arch="32+64">passthrough</transport>
+-        <version>2.0</version>
++        <version>2.1</version>
+         <interface>
+             <name>IMapper</name>
+             <instance>default</instance>
+diff --git a/groups/device-specific/caas/product.mk b/groups/device-specific/caas/product.mk
+index efd387d..3d19bdb 100755
+--- a/groups/device-specific/caas/product.mk
++++ b/groups/device-specific/caas/product.mk
+@@ -21,6 +21,7 @@ PRODUCT_PACKAGES += android.hardware.keymaster@3.0-impl \
+                     android.hardware.camera.provider@2.4-impl \
+                     android.hardware.camera.provider@2.4-service \
+                     android.hardware.graphics.mapper@2.0-impl \
++                    android.hardware.graphics.mapper@2.0-impl-2.1 \
+                     android.hardware.graphics.allocator@2.0-impl \
+                     android.hardware.graphics.allocator@2.0-service \
+                     android.hardware.renderscript@1.0-impl \
+diff --git a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+index b6e2650..55a068b 100644
+--- a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
++++ b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+@@ -125,7 +125,7 @@ CONFIG_RCU_NEED_SEGCBLIST=y
+
+ CONFIG_IKCONFIG=y
+ CONFIG_IKCONFIG_PROC=y
+-# CONFIG_IKHEADERS is not set
++CONFIG_IKHEADERS=y
+ CONFIG_LOG_BUF_SHIFT=18
+ CONFIG_LOG_CPU_MAX_BUF_SHIFT=12
+ CONFIG_PRINTK_SAFE_LOG_BUF_SHIFT=13
+diff --git a/groups/kernel/gmin64/config-lts/lts2019-yocto/x86_64_defconfig b/groups/kernel/gmin64/config-lts/lts2019-yocto/x86_64_defconfig
+index f479751..e058231 100644
+--- a/groups/kernel/gmin64/config-lts/lts2019-yocto/x86_64_defconfig
++++ b/groups/kernel/gmin64/config-lts/lts2019-yocto/x86_64_defconfig
+@@ -125,7 +125,7 @@ CONFIG_RCU_NEED_SEGCBLIST=y
+
+ CONFIG_IKCONFIG=y
+ CONFIG_IKCONFIG_PROC=y
+-# CONFIG_IKHEADERS is not set
++CONFIG_IKHEADERS=y
+ CONFIG_LOG_BUF_SHIFT=18
+ CONFIG_LOG_CPU_MAX_BUF_SHIFT=12
+ CONFIG_PRINTK_SAFE_LOG_BUF_SHIFT=13
+--
+2.17.1
+
