@@ -1,0 +1,20 @@
+From 106407eb24ec8c3bb8706615b72104f10e9ff9b1 Mon Sep 17 00:00:00 2001
+From: Basanagouda Koppad <Basanagoudax.n.Koppad@intel.com>
+Date: Tue, 29 Sep 2020 16:14:35 +0530
+Subject: [PATCH] add sepolicy for ext camera
+
+Tracked-On: OAM-92948
+Signed-off-by: Basanagouda Koppad <Basanagoudax.n.Koppad@intel.com>
+
+diff --git a/camera-ext/ext-camera-only/hal_camera_default.te b/camera-ext/ext-camera-only/hal_camera_default.te
+index a11d945..e458b8c 100644
+--- a/camera-ext/ext-camera-only/hal_camera_default.te
++++ b/camera-ext/ext-camera-only/hal_camera_default.te
+@@ -5,3 +5,4 @@ allow hal_camera_default gpu_device:chr_file rw_file_perms;
+ allow hal_camera_default gpu_device:dir search;
+ allow hal_camera_default hal_graphics_allocator_default_tmpfs:file { map read write };
+ allow hal_camera_default hal_graphics_mapper_hwservice:hwservice_manager find;
++allow hal_camera_default hal_graphics_composer_default:fd use;
+-- 
+2.28.0
+
