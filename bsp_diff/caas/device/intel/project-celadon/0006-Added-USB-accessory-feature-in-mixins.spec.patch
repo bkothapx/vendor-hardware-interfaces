@@ -1,4 +1,4 @@
-From 569a989935a67b79158968eca8bd7de59100bd47 Mon Sep 17 00:00:00 2001
+From 1dec9f6fb61f801bb82624ee504c38d5ac70be67 Mon Sep 17 00:00:00 2001
 From: "Prajapati, ravindrax" <ravindrax.prajapati@intel.com>
 Date: Wed, 16 Sep 2020 18:50:16 +0530
 Subject: [PATCH] Added USB accessory feature in mixins.spec
@@ -6,13 +6,16 @@ Subject: [PATCH] Added USB accessory feature in mixins.spec
 Change-Id: I4b55efbf5b683c2a2b9a316401619eac1451d549
 Tracked-On: OAM-92848
 Signed-off-by: Prajapati, ravindrax <ravindrax.prajapati@intel.com>
+---
+ caas/mixins.spec | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/caas/mixins.spec b/caas/mixins.spec
-index 2f277a3..87081e2 100755
+index e344a60..6507870 100755
 --- a/caas/mixins.spec
 +++ b/caas/mixins.spec
 @@ -33,7 +33,7 @@ rfkill: true(force_disable=)
- wlan: auto
+ wlan: iwlwifi(libwifi-hal=true)
  codecs: configurable(hw_ve_h265=true, hw_vd_vp9=true, hw_vd_mp2=true, hw_vd_vc1=false, platform=bxt, profile_file=media_profiles_1080p.xml)
  codec2: true
 -usb: host
@@ -20,6 +23,6 @@ index 2f277a3..87081e2 100755
  usb-gadget: auto(usb_config=adb,mtp_adb_pid=0x0a5f,ptp_adb_pid=0x0a61,rndis_pid=0x0a62,rndis_adb_pid=0x0a63,bcdDevice=0x0,bcdUSB=0x200,controller=dwc3.2.auto,f_acm=false,f_dvc_trace=true,dvctrace_source_dev=dvcith-0-msc0)
  midi: true
  touch: cvt0f21
---
+-- 
 2.17.1
 
