@@ -1,0 +1,100 @@
+From 5629ec53f2abd97f190001108530524a8b33afdb Mon Sep 17 00:00:00 2001
+From: Swee Yee Fonn <swee.yee.fonn@intel.com>
+Date: Thu, 1 Oct 2020 21:44:30 +0800
+Subject: [PATCH] Add HP WMI driver to caas kernel config
+
+Add HP WMI driver to caas lts2019-chromium
+kernel config.
+
+Tracked-On: OAM-93628
+Change-Id: Icb9816fea7330a06e209d3d598e6a2afcfac9d62
+Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
+---
+ .../lts2019-chromium/caas_diffconfig          |  3 +++
+ .../lts2019-chromium/x86_64_defconfig         | 19 ++++++++++++++++++-
+ 2 files changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/groups/kernel/gmin64/config-lts/lts2019-chromium/caas_diffconfig b/groups/kernel/gmin64/config-lts/lts2019-chromium/caas_diffconfig
+index 7fdf944..d1f170f 100644
+--- a/groups/kernel/gmin64/config-lts/lts2019-chromium/caas_diffconfig
++++ b/groups/kernel/gmin64/config-lts/lts2019-chromium/caas_diffconfig
+@@ -29,3 +29,6 @@ CONFIG_OVERLAY_FS=y
+ CONFIG_GPIO_GENERIC=y
+ CONFIG_GPIO_VIRTIO=y
+ CONFIG_I2C_VIRTIO=y
++CONFIG_ACPI_WMI=m
++CONFIG_WMI_BMOF=m
++CONFIG_HP_WMI=m
+diff --git a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+index c058bd5..ee40fc4 100644
+--- a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
++++ b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+@@ -5301,11 +5301,15 @@ CONFIG_LTE_GDM724X=m
+ # CONFIG_EXFAT_FS is not set
+ # CONFIG_QLGE is not set
+ CONFIG_X86_PLATFORM_DEVICES=y
++# CONFIG_ACER_WMI is not set
+ # CONFIG_ACER_WIRELESS is not set
+ # CONFIG_ACERHDF is not set
++# CONFIG_ALIENWARE_WMI is not set
+ # CONFIG_ASUS_LAPTOP is not set
+ CONFIG_DCDBAS=y
+ # CONFIG_DELL_SMBIOS is not set
++# CONFIG_DELL_WMI_AIO is not set
++# CONFIG_DELL_WMI_LED is not set
+ # CONFIG_DELL_SMO8800 is not set
+ # CONFIG_DELL_RBTN is not set
+ CONFIG_DELL_RBU=y
+@@ -5315,21 +5319,32 @@ CONFIG_DELL_RBU=y
+ # CONFIG_GPD_POCKET_FAN is not set
+ # CONFIG_HP_ACCEL is not set
+ # CONFIG_HP_WIRELESS is not set
++CONFIG_HP_WMI=m
++# CONFIG_LG_LAPTOP is not set
+ # CONFIG_MSI_LAPTOP is not set
+ # CONFIG_PANASONIC_LAPTOP is not set
+ # CONFIG_COMPAL_LAPTOP is not set
+ # CONFIG_SONY_LAPTOP is not set
+ # CONFIG_IDEAPAD_LAPTOP is not set
++# CONFIG_SURFACE3_WMI is not set
+ # CONFIG_THINKPAD_ACPI is not set
+ # CONFIG_SENSORS_HDAPS is not set
+ # CONFIG_INTEL_IOM is not set
+ # CONFIG_INTEL_MENLOW is not set
+ # CONFIG_EEEPC_LAPTOP is not set
++# CONFIG_ASUS_WMI is not set
+ # CONFIG_ASUS_WIRELESS is not set
+-# CONFIG_ACPI_WMI is not set
++CONFIG_ACPI_WMI=m
++CONFIG_WMI_BMOF=m
++# CONFIG_INTEL_WMI_THUNDERBOLT is not set
++# CONFIG_XIAOMI_WMI is not set
++# CONFIG_MSI_WMI is not set
++# CONFIG_PEAQ_WMI is not set
+ # CONFIG_TOPSTAR_LAPTOP is not set
++# CONFIG_ACPI_TOSHIBA is not set
+ # CONFIG_TOSHIBA_BT_RFKILL is not set
+ # CONFIG_TOSHIBA_HAPS is not set
++# CONFIG_TOSHIBA_WMI is not set
+ # CONFIG_ACPI_CMPC is not set
+ # CONFIG_INTEL_INT0002_VGPIO is not set
+ # CONFIG_INTEL_HID_EVENT is not set
+@@ -5340,6 +5355,7 @@ CONFIG_DELL_RBU=y
+ # CONFIG_INTEL_PMC_CORE is not set
+ # CONFIG_IBM_RTL is not set
+ # CONFIG_SAMSUNG_LAPTOP is not set
++# CONFIG_MXM_WMI is not set
+ # CONFIG_INTEL_OAKTRAIL is not set
+ # CONFIG_SAMSUNG_Q10 is not set
+ # CONFIG_APPLE_GMUX is not set
+@@ -5352,6 +5368,7 @@ CONFIG_INTEL_PUNIT_IPC=y
+ # CONFIG_INTEL_TURBO_MAX_3 is not set
+ # CONFIG_I2C_MULTI_INSTANTIATE is not set
+ # CONFIG_INTEL_ATOMISP2_PM is not set
++# CONFIG_HUAWEI_WMI is not set
+ # CONFIG_PCENGINES_APU2 is not set
+
+ #
+--
+2.17.1
+
