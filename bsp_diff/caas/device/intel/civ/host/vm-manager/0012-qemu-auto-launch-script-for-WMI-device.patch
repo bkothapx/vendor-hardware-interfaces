@@ -1,4 +1,4 @@
-From e986199ed292485991d92fa2a313a581d235c797 Mon Sep 17 00:00:00 2001
+From 6fb547ec2daf417504ad9505cc63c9aca656bdbf Mon Sep 17 00:00:00 2001
 From: Yan Zhao <yan.y.zhao@intel.com>
 Date: Fri, 18 Sep 2020 20:41:31 +0800
 Subject: [PATCH] qemu auto launch script for WMI device
@@ -11,12 +11,12 @@ Signed-off-by: Yan Zhao <yan.y.zhao@intel.com>
 Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
 ---
  scripts/setup_host.sh |  2 +-
- scripts/start_civ.sh  | 28 ++++++++++++++++++++++++++++
- 2 files changed, 29 insertions(+), 1 deletion(-)
+ scripts/start_civ.sh  | 30 ++++++++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+), 1 deletion(-)
  mode change 100755 => 100644 scripts/start_civ.sh
 
 diff --git a/scripts/setup_host.sh b/scripts/setup_host.sh
-index 56975b2..a3dbcd8 100755
+index 9a1562e..3e09c6b 100755
 --- a/scripts/setup_host.sh
 +++ b/scripts/setup_host.sh
 @@ -28,7 +28,7 @@ function ubu_changes_require(){
@@ -31,7 +31,7 @@ index 56975b2..a3dbcd8 100755
 diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
 old mode 100755
 new mode 100644
-index 5f1a858..9dd49f0
+index 5f1a858..876376f
 --- a/scripts/start_civ.sh
 +++ b/scripts/start_civ.sh
 @@ -23,6 +23,7 @@ GUEST_RPMB_DEV_PID=
@@ -50,7 +50,7 @@ index 5f1a858..9dd49f0
 
  GUEST_STATIC_OPTION="\
   -name caas-vm \
-@@ -151,6 +153,26 @@ function setup_swtpm() {
+@@ -151,6 +153,28 @@ function setup_swtpm() {
      swtpm socket --tpmstate dir=$WORK_DIR/vtpm0 --tpm2 --ctrl type=unixio,path=$WORK_DIR/vtpm0/swtpm-sock &
  }
 
@@ -58,26 +58,28 @@ index 5f1a858..9dd49f0
 +    #start listening daemon for wmi
 +    local wmi_listener_daemon=$SCRIPTS_DIR/wmi-listen.sh
 +    local guest_wmi_qmp_sock=$WORK_DIR/qmp-wmi-sock
-+	local guest_wmi_target="95F24279-4D7B-"
++    local guest_wmi_target="95F24279-4D7B-"
 +    if [ -f $wmi_listener_daemon ]; then
 +        modprobe acpi-mediator
-+        setsid $SCRIPTS_DIR/wmi-listen.sh "$guest_wmi_qmp_sock" "$guest_wmi_target" "$SCRIPTS_DIR" &> $WORK_DIR/wmi-listener.log </dev/null &
++        setsid $SCRIPTS_DIR/wmi-listen.sh "$guest_wmi_qmp_sock" "$guest_wmi_target" "$SCRIPTS_DIR" &> $WORK_DIR/wmi-listener.log &
 +        GUEST_WMI_LISTENER_DAEMON_PID=$!
 +        #echo wmid $GUEST_WMI_LISTENER_DAEMON_PID
 +        GUEST_WMI_DEV="-qmp unix:$guest_wmi_qmp_sock,server,nowait -device acpi-proxy -smbios \"type=11,value=FBYTE#6S6b7B7H7M7R7W7m7s8YaBapaqaub8bTbhcAdRdUdqfAjAjQjq.M2;,value=BUILDID#18WWCABN6AN#SABA#DABA;,value=EDK2_1,value=Buff=2,value=Dock Embedded Controller FW Version:21.53;,value=Dock Serial Number:5CG8396B3Y;,value=HRDWFEATS=VTX:1;VTD:1;SGX:0;NONHPBATDET:1\""
-+	fi
++    fi
 +}
 +
 +function cleanup_hp_wmi_listener() {
 +    local procname=`basename "$0"`
 +    kill_daemon_proc "$GUEST_WMI_LISTENER_DAEMON_PID" "$procname"
-+    pkill -TERM -P "$GUEST_WMI_LISTENER_DAEMON_PID"
++    if [[ ! -z "$GUEST_WMI_LISTENER_DAEMON_PID" ]]; then
++        pkill -TERM -P "$GUEST_WMI_LISTENER_DAEMON_PID"
++    fi
 +}
 +
  function setup_thermal_mediation() {
      local thermal_daemon=$SCRIPTS_DIR/thermsys
      if [ -f $thermal_daemon ]; then
-@@ -666,6 +688,7 @@ function cleanup() {
+@@ -666,6 +690,7 @@ function cleanup() {
      cleanup_rpmb_dev
      cleanup_thermal_mediation
      cleanup_battery_mediation
@@ -85,7 +87,7 @@ index 5f1a858..9dd49f0
      [[ -z $GUEST_USB_PT_DEV ]] || set_pt_usb unset
      [[ -z $GUEST_AUDIO_PT_DEV ]] || set_pt_audio unset
      [[ -z $GUEST_UDC_PT_DEV ]] || set_pt_udc unset
-@@ -720,6 +743,7 @@ function launch_guest() {
+@@ -720,6 +745,7 @@ function launch_guest() {
                $GUEST_AAF \
                $GUEST_STATIC_OPTION \
                $GUEST_EXTRA_QCMD \
@@ -93,7 +95,7 @@ index 5f1a858..9dd49f0
      "
 
      echo $EXE_CMD
-@@ -883,6 +907,10 @@ function parse_arg() {
+@@ -883,6 +909,10 @@ function parse_arg() {
                  set_guest_pwr_vol_button
                  ;;
 
