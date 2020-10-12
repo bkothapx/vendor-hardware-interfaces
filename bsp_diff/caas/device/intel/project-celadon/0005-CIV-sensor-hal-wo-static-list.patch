@@ -1,4 +1,4 @@
-From a49e3605e8bdfd9f524458681e384438503f9bd4 Mon Sep 17 00:00:00 2001
+From d4f6d976b713388ce43c388edcbd9ca8f1f7581c Mon Sep 17 00:00:00 2001
 From: Swee Yee Fonn <swee.yee.fonn@intel.com>
 Date: Fri, 18 Sep 2020 10:56:59 +0800
 Subject: [PATCH] CIV: sensor hal wo static list
@@ -15,14 +15,14 @@ Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/caas/mixins.spec b/caas/mixins.spec
-index 2f277a3..aa86d45 100755
+index 41ff770..c3b636b 100755
 --- a/caas/mixins.spec
 +++ b/caas/mixins.spec
-@@ -86,4 +86,4 @@ atrace: true
+@@ -84,4 +84,4 @@ atrace: true
  firmware: true(all_firmwares=true)
  aaf: true
  suspend: auto
--sensors: false
+-sensors: mediation
 +sensors: mediation(disable_static_sensor_list=true)
 --
 2.17.1

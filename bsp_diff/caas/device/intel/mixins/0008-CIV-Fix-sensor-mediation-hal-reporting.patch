@@ -1,4 +1,4 @@
-From c141da9b9e57070a428a8366cd5545df6bbf1958 Mon Sep 17 00:00:00 2001
+From cc2e38876d51e99a50042af8373368a1d827a96e Mon Sep 17 00:00:00 2001
 From: Swee Yee Fonn <swee.yee.fonn@intel.com>
 Date: Thu, 17 Sep 2020 12:57:02 +0800
 Subject: [PATCH] CIV: Fix sensor mediation hal reporting
@@ -53,7 +53,7 @@ index 0000000..18d3ef8
 +    <unavailable-feature name="android.hardware.sensor.ambient_temperature" />
 +</permissions>
 diff --git a/groups/device-specific/caas/caas.mk b/groups/device-specific/caas/caas.mk
-index 427a673..476289b 100644
+index f35c675..90ddc40 100644
 --- a/groups/device-specific/caas/caas.mk
 +++ b/groups/device-specific/caas/caas.mk
 @@ -24,7 +24,8 @@ PRODUCT_FULL_TREBLE_OVERRIDE := false
@@ -67,17 +67,17 @@ index 427a673..476289b 100644
  BOARD_USE_64BIT_USERSPACE := true
 
 diff --git a/groups/device-specific/caas/files.spec b/groups/device-specific/caas/files.spec
-index 58249b9..8cbe2ff 100644
+index 5de1f9b..0e6f38d 100644
 --- a/groups/device-specific/caas/files.spec
 +++ b/groups/device-specific/caas/files.spec
-@@ -8,6 +8,7 @@ flash_cmd.sh: "ELK mode flash tool"
- manifest.xml: "define hidl interface"
- overlay: "configurations for SystemUI"
+@@ -11,6 +11,7 @@ overlay: "configurations for SystemUI"
  system.prop: "system properties file"
-+android-removed-permissions.xml: "remove features not supported"
  {{ref_target}}.mk: "product definition file"
  r2_{{target}}.mk: "Ring 2 target for P.car"
++android-removed-permissions.xml: "remove features not supported"
  start_flash_usb.sh: "script for flashing qcow2 in Qemu"
+ start_android_qcow2.sh: "script for starting android in Qemu"
+ setup_host.sh: "script for setting up virtulization environment on host"
 diff --git a/groups/sensors/mediation/BoardConfig.mk b/groups/sensors/mediation/BoardConfig.mk
 index 7f6aba9..33f8cad 100644
 --- a/groups/sensors/mediation/BoardConfig.mk

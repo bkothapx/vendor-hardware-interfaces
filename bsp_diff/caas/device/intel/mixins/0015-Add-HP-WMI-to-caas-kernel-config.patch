@@ -1,4 +1,4 @@
-From 5629ec53f2abd97f190001108530524a8b33afdb Mon Sep 17 00:00:00 2001
+From ac8823b9198417248b8451665207a1f720018d2b Mon Sep 17 00:00:00 2001
 From: Swee Yee Fonn <swee.yee.fonn@intel.com>
 Date: Thu, 1 Oct 2020 21:44:30 +0800
 Subject: [PATCH] Add HP WMI driver to caas kernel config
@@ -26,10 +26,10 @@ index 7fdf944..d1f170f 100644
 +CONFIG_WMI_BMOF=m
 +CONFIG_HP_WMI=m
 diff --git a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
-index c058bd5..ee40fc4 100644
+index 2ca1234..10a49b9 100644
 --- a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
 +++ b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
-@@ -5301,11 +5301,15 @@ CONFIG_LTE_GDM724X=m
+@@ -5306,11 +5306,15 @@ CONFIG_LTE_GDM724X=m
  # CONFIG_EXFAT_FS is not set
  # CONFIG_QLGE is not set
  CONFIG_X86_PLATFORM_DEVICES=y
@@ -45,7 +45,7 @@ index c058bd5..ee40fc4 100644
  # CONFIG_DELL_SMO8800 is not set
  # CONFIG_DELL_RBTN is not set
  CONFIG_DELL_RBU=y
-@@ -5315,21 +5319,32 @@ CONFIG_DELL_RBU=y
+@@ -5320,20 +5324,31 @@ CONFIG_DELL_RBU=y
  # CONFIG_GPD_POCKET_FAN is not set
  # CONFIG_HP_ACCEL is not set
  # CONFIG_HP_WIRELESS is not set
@@ -59,7 +59,6 @@ index c058bd5..ee40fc4 100644
 +# CONFIG_SURFACE3_WMI is not set
  # CONFIG_THINKPAD_ACPI is not set
  # CONFIG_SENSORS_HDAPS is not set
- # CONFIG_INTEL_IOM is not set
  # CONFIG_INTEL_MENLOW is not set
  # CONFIG_EEEPC_LAPTOP is not set
 +# CONFIG_ASUS_WMI is not set
@@ -79,7 +78,7 @@ index c058bd5..ee40fc4 100644
  # CONFIG_ACPI_CMPC is not set
  # CONFIG_INTEL_INT0002_VGPIO is not set
  # CONFIG_INTEL_HID_EVENT is not set
-@@ -5340,6 +5355,7 @@ CONFIG_DELL_RBU=y
+@@ -5344,6 +5359,7 @@ CONFIG_DELL_RBU=y
  # CONFIG_INTEL_PMC_CORE is not set
  # CONFIG_IBM_RTL is not set
  # CONFIG_SAMSUNG_LAPTOP is not set
@@ -87,7 +86,7 @@ index c058bd5..ee40fc4 100644
  # CONFIG_INTEL_OAKTRAIL is not set
  # CONFIG_SAMSUNG_Q10 is not set
  # CONFIG_APPLE_GMUX is not set
-@@ -5352,6 +5368,7 @@ CONFIG_INTEL_PUNIT_IPC=y
+@@ -5356,6 +5372,7 @@ CONFIG_INTEL_PUNIT_IPC=y
  # CONFIG_INTEL_TURBO_MAX_3 is not set
  # CONFIG_I2C_MULTI_INSTANTIATE is not set
  # CONFIG_INTEL_ATOMISP2_PM is not set
