@@ -1,0 +1,214 @@
+From 7a70100dc90d631455789726cd606a14c5d36cbb Mon Sep 17 00:00:00 2001
+From: Xiao He <xiao.he@intel.com>
+Date: Wed, 25 Nov 2020 21:19:10 +0800
+Subject: [PATCH] SDE/FRP: vm-manager: start_civ.sh changes
+
+1. Support boot android guest form specific partition
+2. Enable secure erase daemon for secure data erase
+
+Signed-off-by: Xiao He <xiao.he@intel.com>
+
+diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
+index b29cf68..2e09d17 100755
+--- a/scripts/start_civ.sh
++++ b/scripts/start_civ.sh
+@@ -26,6 +26,7 @@ GUEST_RPMB_DEV_SOCK=
+ GUEST_THERMAL_DAEMON_PID=
+ GUEST_BATTERY_DAEMON_PID=
+ GUEST_WMI_LISTENER_DAEMON_PID=
++GUEST_SECURE_ERASE_DAEMON_PID=
+ GUEST_IMAGE=$WORK_DIR/android.qcow2
+ GUEST_VSOCK="-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=3"
+ GUEST_SHARE_FOLDER=
+@@ -229,6 +230,19 @@ function set_cpu() {
+
+ function set_disk() {
+     GUEST_DISK="-drive file=$1,if=none,id=disk1"
++    if [[ $1 =~ "/dev/" ]]; then
++        SECURE_ERASE_DAEMON=$SCRIPTS_DIR/secure_erase_daemon
++        local start=$(gdisk -l $1 | while read line;do vars=($line); [ "${vars[6]}" == "userdata" ] && echo ${vars[1]//.}; done)
++        local end=$(gdisk -l $1 | while read line;do vars=($line); [ "${vars[6]}" == "userdata" ] && echo ${vars[2]//.}; done)
++        if [ ! -f "$SECURE_ERASE_DAEMON" ]; then
++            echo "Fatal: $SECURE_ERASE_DAEMON not found !"
++            exit -1
++        else
++            chmod +x $SECURE_ERASE_DAEMON
++            $SECURE_ERASE_DAEMON $1 $start $end &
++            GUEST_SECURE_ERASE_DAEMON_PID=$!
++        fi
++   fi
+ }
+
+ function set_firmware_path() {
+@@ -499,6 +513,10 @@ function set_extra_qcmd() {
+     GUEST_EXTRA_QCMD=$1
+ }
+
++function cleanup_secure_erase_daemon() {
++    kill_daemon_proc "$GUEST_SECURE_ERASE_DAEMON_PID" "secure_erase_daemon"
++}
++
+ function set_pt_pci_vfio() {
+     local PT_PCI=$1
+     local unset=$2
+@@ -708,6 +726,7 @@ function cleanup() {
+     cleanup_thermal_mediation
+     cleanup_battery_mediation
+     cleanup_hp_wmi_listener
++    cleanup_secure_erase_daemon
+     [[ -z $GUEST_USB_PT_DEV ]] || set_pt_usb unset
+     [[ -z $GUEST_AUDIO_PT_DEV ]] || set_pt_audio unset
+     [[ -z $GUEST_UDC_PT_DEV ]] || set_pt_udc unset
+diff --git a/scripts/start_flash_usb.sh b/scripts/start_flash_usb.sh
+index d824231..02038c3 100755
+--- a/scripts/start_flash_usb.sh
++++ b/scripts/start_flash_usb.sh
+@@ -7,39 +7,101 @@
+
+ WORK_DIR=$PWD
+
+-[ $# -lt 1 ] && echo "Usage: $0 caas-flashfiles-eng-<user>.zip" && exit -1
+-
+-if [ -f android.qcow2 ]
+-then
+-	echo -n "android.qcow2 already exsited, Do you want to flash new one(y/N):"
+-	read option
+-	if [ "$option" == 'y' ]
+-	then
+-		rm android.qcow2
+-	else
+-		exit 1
+-	fi
+-fi
++DISPLAY_TYPE="gtk,gl=on"
++GUEST_IMAGE=$WORK_DIR/android.qcow2
++IMAGE_FORMAT=qcow2
++Flash_PHY_DISK=false
++FLASH_FILES=
+
+-qemu-img create -f qcow2 android.qcow2 32G
++function set_display_off()
++{
++  DISPLAY_TYPE="none"
++}
+
+-[ -d "./flashfiles_decompress" ] && rm -rf "./flashfiles_decompress"
+-mkdir ./flashfiles_decompress
+-unzip $1 -d ./flashfiles_decompress
+-dd if=/dev/zero of=./flash.vfat bs=63M count=160
+-mkfs.vfat ./flash.vfat
+-mcopy -i flash.vfat flashfiles_decompress/* ::
++function set_disk()
++{
++  GUEST_IMAGE=$1
++  IMAGE_FORMAT=raw
++  FLASH_PHY_DISK=true
++}
+
+-ovmf_file="./OVMF.fd"
+-[ ! -f $ovmf_file ] && ovmf_file="/usr/share/qemu/OVMF.fd"
++function show_help()
++{
++  printf "$(basename "$0") flashfiles [-d <partition>] [--display-off]\n"
++  printf "\t flashfiles caas-flashfiles-eng-<user>.zip\n"
++  printf "Options:\n"
++  printf "\t-h show this help message\n"
++  printf "\t-d specify flash the image to dedicated partition\n"
++  printf "\t--display-off disable use of display for flashing process output\n"
++}
++
++function parse_arg() {
++  [ $# -lt 1 ]  && show_help && exit -1
++  FLASH_FILES=$1;
++  [ ! -f $FLASH_FILES ] && show_help && exit -1
++  shift
++  while [[ $# -gt 0 ]]; do
++    case $1 in
++      -h|-\?|--help)
++        show_help
++        exit
++        ;;
++
++      -d)
++        set_disk $2
++        shift
++        ;;
++
++      --display-off)
++        set_display_off
++        ;;
++
++      -?*)
++        echo "Error: Invalid option $1"
++        show_help
++        return -1
++        ;;
++
++      *)
++        echo "unknown option: $1"
++        show_help
++        return -1
++        ;;
+
+-if [[ $2 == "--display-off" ]]
+-then
+-	display_type="none"
++      esac
++      shift
++  done
++}
++
++parse_arg "$@" || exit -1
++
++if [[ $FLASH_PHY_DISK == true ]]; then
++  dd if=/dev/zero of=$GUEST_IMAGE bs=32M count=8
++  mkfs.ext4 $GUEST_IMAGE
+ else
+-	display_type="gtk,gl=on"
++  if [ -f $GUEST_IMAGE ]; then
++    echo -n "$GUEST_IMAGE already exsited, Do you want to flash new one(y/N):"
++    read option
++    if [ "$option" == 'y' ]; then
++      rm $GUEST_IMAGE
++    else
++      exit 1
++    fi
++  fi
++  qemu-img create -f qcow2 $GUEST_IMAGE 32G
+ fi
+
++[ -d "$WORK_DIR/flashfiles_decompress" ] && rm -rf "$WORK_DIR/flashfiles_decompress"
++mkdir $WORK_DIR/flashfiles_decompress
++unzip $FLASH_FILES -d $WORK_DIR/flashfiles_decompress
++dd if=/dev/zero of=$WORK_DIR/flash.vfat bs=63M count=160
++mkfs.vfat $WORK_DIR/flash.vfat
++mcopy -i $WORK_DIR/flash.vfat $WORK_DIR/flashfiles_decompress/* ::
++
++ovmf_file="$WORK_DIR/OVMF.fd"
++[ ! -f $ovmf_file ] && ovmf_file="/usr/share/qemu/OVMF.fd"
++
++
+ #start software Trusted Platform Module
+ mkdir -p $WORK_DIR/vtpm0
+ swtpm socket --tpmstate dir=$WORK_DIR/vtpm0 --tpm2 --ctrl type=unixio,path=$WORK_DIR/vtpm0/swtpm-sock &
+@@ -54,14 +116,14 @@ qemu-system-x86_64 \
+   -chardev socket,id=charserial0,path=./kernel-console,server,nowait \
+   -device isa-serial,chardev=charserial0,id=serial0 \
+   -device qemu-xhci,id=xhci,addr=0x5 \
+-  -drive file=./flash.vfat,id=udisk1,format=raw,if=none \
++  -drive file=$WORK_DIR/flash.vfat,id=udisk1,format=raw,if=none \
+   -device usb-storage,drive=udisk1,bus=xhci.0 \
+   -device virtio-scsi-pci,id=scsi0,addr=0x8 \
+-  -drive file=./android.qcow2,if=none,format=qcow2,id=scsidisk1 \
++  -drive file=$GUEST_IMAGE,if=none,format=$IMAGE_FORMAT,id=scsidisk1 \
+   -device scsi-hd,drive=scsidisk1,bus=scsi0.0 \
+   -drive file=$ovmf_file,format=raw,if=pflash \
+   -no-reboot \
+-  -display $display_type \
++  -display $DISPLAY_TYPE \
+   -boot menu=on,splash-time=5000,strict=on \
+   -chardev socket,id=chrtpm,path=$WORK_DIR/vtpm0/swtpm-sock \
+   -tpmdev emulator,id=tpm0,chardev=chrtpm \
+--
+2.17.1
+
