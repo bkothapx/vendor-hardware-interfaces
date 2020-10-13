@@ -1,0 +1,30 @@
+From 1b9ab7c8e16901f507005873c6b6e1c5d45ba117 Mon Sep 17 00:00:00 2001
+From: Basanagouda Koppad <Basanagoudax.n.Koppad@intel.com>
+Date: Thu, 8 Oct 2020 16:09:23 +0530
+Subject: [PATCH] add device admin permissions
+
+Tracked-on: OAM-94236
+Signed-off-by: Basanagouda Koppad <Basanagoudax.n.Koppad@intel.com>
+---
+ groups/device-specific/caas/product.mk | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/groups/device-specific/caas/product.mk b/groups/device-specific/caas/product.mk
+index cdb57e5..f216223 100755
+--- a/groups/device-specific/caas/product.mk
++++ b/groups/device-specific/caas/product.mk
+@@ -28,6 +28,11 @@ PRODUCT_PACKAGES += android.hardware.keymaster@3.0-impl \
+
+ PRODUCT_PROPERTY_OVERRIDES += ro.control_privapp_permissions=enforce
+
++product_copy_files += \
++    frameworks/native/data/etc/android.software.device_admin.xml:vendor/etc/permissions/android.software.device_admin.xml \
++    frameworks/native/data/etc/android.software.managed_users.xml:vendor/etc/permissions/android.software.managed_users.xml \
++    frameworks/native/data/etc/android.software.secure_lock_screen.xml:vendor/etc/permissions/android.software.secure_lock_screen.xml
++
+ PRODUCT_COPY_FILES += $(LOCAL_PATH)/file_share.sh:$(TARGET_COPY_OUT_VENDOR)/bin/file_share.sh
+ PRODUCT_COPY_FILES += vendor/intel/utils/LICENSE:$(PRODUCT_OUT)/LICENSE
+ PRODUCT_COPY_FILES += $(LOCAL_PATH)/auto_switch_pt_usb_vms.sh:$(PRODUCT_OUT)/scripts/auto_switch_pt_usb_vms.sh
+--
+2.17.1
+
