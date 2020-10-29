@@ -1,0 +1,34 @@
+From ebbc8fbb6b02b78c84f35ee9831ea150b8c010e9 Mon Sep 17 00:00:00 2001
+From: Yan Zhao <yan.y.zhao@intel.com>
+Date: Mon, 26 Oct 2020 15:33:14 +0800
+Subject: [PATCH] ACPI PROXY device: change the reserve range
+
+changed the reserve range for ACPI PROXY device from
+0x7FD7F000 - 0x7FD85FFF to 0x808000 - 0x80EFFF.
+
+the original range (0x7FD7F000 - 0x7FD85FFF) would
+conflict with range (0x7FC00000 - 0x7FDFFFFF) of type
+EFIBootServiceData(4) and would cause PAGE FAULT in
+flashing bootloader phase.
+
+Signed-off-by: Yan Zhao <yan.y.zhao@intel.com>
+---
+ OvmfPkg/PlatformPei/MemDetect.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/OvmfPkg/PlatformPei/MemDetect.c b/OvmfPkg/PlatformPei/MemDetect.c
+index 614d719b40..331a7e6069 100644
+--- a/OvmfPkg/PlatformPei/MemDetect.c
++++ b/OvmfPkg/PlatformPei/MemDetect.c
+@@ -825,7 +825,7 @@ InitializeRamRegions (
+   }
+
+   BuildMemoryAllocationHob (
+-    0x7fd7f000,
++    0x00808000,
+     0x7000,
+     EfiACPIMemoryNVS
+     );
+--
+2.17.1
+

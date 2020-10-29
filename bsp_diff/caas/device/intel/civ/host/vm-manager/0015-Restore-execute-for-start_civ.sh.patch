@@ -1,0 +1,21 @@
+From 19b262c60cf6f847525b3f9274540b6fee07b00a Mon Sep 17 00:00:00 2001
+From: Swee Yee Fonn <swee.yee.fonn@intel.com>
+Date: Fri, 16 Oct 2020 23:37:08 +0800
+Subject: [PATCH] Restore execute for start_civ.sh
+
+Restore execute for start_civ.sh
+
+Tracked-On: OAM-94347
+Change-Id: Ibd5163d53e4bbc97929bb2ced28a01a3cc1b008d
+Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
+---
+ scripts/start_civ.sh | 0
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ mode change 100644 => 100755 scripts/start_civ.sh
+
+diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
+old mode 100644
+new mode 100755
+--
+2.17.1
+

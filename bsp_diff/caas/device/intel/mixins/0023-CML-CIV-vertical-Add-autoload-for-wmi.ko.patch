@@ -1,0 +1,30 @@
+From 13789f02d5035e4a53af8b442b0c762db22a44b5 Mon Sep 17 00:00:00 2001
+From: Swee Yee Fonn <swee.yee.fonn@intel.com>
+Date: Wed, 14 Oct 2020 18:33:38 +0800
+Subject: [PATCH] [CML CIV vertical] Add autoload for wmi.ko
+
+Add load of wmi.ko for HP wmi device support
+
+Change-Id: I9b302a314e34803e510111479e44ebe65784f705
+Tracked-On: OAM-94313
+Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
+---
+ groups/device-specific/caas/init.rc | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/groups/device-specific/caas/init.rc b/groups/device-specific/caas/init.rc
+index 2c67e82..0d60002 100644
+--- a/groups/device-specific/caas/init.rc
++++ b/groups/device-specific/caas/init.rc
+@@ -7,6 +7,8 @@ on post-fs-data
+ on boot
+     write /sys/devices/platform/INT33BB:00/power/control on
+     write /sys/devices/pci0000\:00/0000\:00\:15.0/power/control auto
++    # For loading HP WMI device driver
++    insmod /vendor/lib/modules/wmi.ko
+
+ on post-fs
+     #Accelerometer: X & Z inverted
+--
+2.17.1
+
