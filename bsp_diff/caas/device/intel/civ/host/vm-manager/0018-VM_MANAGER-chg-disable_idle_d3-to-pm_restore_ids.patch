@@ -1,0 +1,66 @@
+From 94d9c46fe3ed3f41c0da7120af1cb92f501364b1 Mon Sep 17 00:00:00 2001
+From: Colin Xu <colin.xu@intel.com>
+Date: Wed, 18 Nov 2020 13:19:00 +0800
+Subject: [PATCH] VM_MANAGER: chg disable_idle_d3 to pm_restore_ids
+
+No need to add disable_idle_d3=1 to workaround the
+guest intel-lpss driver initialization failure. Use
+the new pm_restore_ids so that the specific device
+can save/restore device during power transition.
+
+Currently below I2C controller on Tasmania are added:
+Comet Lake PCH Serial IO I2C Controller [8086:06e8]
+Comet Lake PCH Serial IO I2C Controller [8086:06e9]
+
+Tracked-On: OAM-94623
+Change-Id: I766a89b0f875b191c1f3e32a407f141709229078
+Signed-off-by: Colin Xu <colin.xu@intel.com>
+Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
+---
+ scripts/setup_host.sh | 28 +++++++++++++++++++++++++++-
+ 1 file changed, 27 insertions(+), 1 deletion(-)
+
+diff --git a/scripts/setup_host.sh b/scripts/setup_host.sh
+index f0c987e..a83d1d8 100755
+--- a/scripts/setup_host.sh
++++ b/scripts/setup_host.sh
+@@ -134,9 +134,35 @@ function ubu_append_host_grub(){
+     fi
+ }
+
++function find_dev_id() {
++    local desc="$1"
++    local PCI_DEV_IDS=()
++    local dev_ids=""
++    if [ $(lspci -Dnn | grep -c "$desc") != "0" ]; then
++        while IFS= read -r line; do
++            PCI_DEV_IDS+=( "${line}" )
++        done < <( lspci -Dnn | grep "$desc" | grep -Po "^.*\[\K(\S{4}:\S{4})(?=\].*$)" )
++        for id in "${PCI_DEV_IDS[@]}"; do
++            dev_ids="$dev_ids,$id"
++        done
++        if [ ! -z "$dev_ids" ]; then
++            dev_ids="${dev_ids:1}"
++        fi
++    fi
++    if [ ! -z "$dev_ids" ]; then
++        echo $dev_ids
++    fi
++    return 0
++}
++
+ function ubu_enable_additional_kernel_params(){
++    local i2c_desc="Comet Lake PCH Serial IO I2C Controller"
++    local i2c_devs=$(find_dev_id "$i2c_desc")
++    echo "$i2c_desc devices: $i2c_devs"
++    if [ ! -z "$i2c_devs" ]; then
++        ubu_append_host_grub "vfio-pci.pm_restore_ids=$i2c_devs"
++    fi
+     ubu_append_host_grub "vfio_iommu_type1.allow_unsafe_interrupts=1"
+-    ubu_append_host_grub "vfio-pci.disable_idle_d3=1"
+ }
+
+ function check_os() {
+--
+2.17.1
+
