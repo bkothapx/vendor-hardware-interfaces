@@ -22,7 +22,7 @@ index 614d719b40..331a7e6069 100644
 +++ b/OvmfPkg/PlatformPei/MemDetect.c
 @@ -825,7 +825,7 @@ InitializeRamRegions (
    }
-
+ 
    BuildMemoryAllocationHob (
 -    0x7fd7f000,
 +    0x00808000,
@@ -30,5 +30,5 @@ index 614d719b40..331a7e6069 100644
      EfiACPIMemoryNVS
      );
 --
-2.17.1
+2.29.2
 
