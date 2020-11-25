@@ -1,4 +1,4 @@
-From 7826b310e36c3ee1a1de49354376db4cbf3ad729 Mon Sep 17 00:00:00 2001
+From be3c3cd21ed1236e83eefb7e6b228194eaf4a5bc Mon Sep 17 00:00:00 2001
 From: Colin Xu <colin.xu@intel.com>
 Date: Thu, 2 Jul 2020 08:57:48 +0800
 Subject: [PATCH] Add GPIO VirtIO backend driver.
@@ -8,18 +8,22 @@ V2:
 - Fix typo.
 - Fix KW.
 
-Tracked-On: OAM-92921
+V3:
+- Don't close opened line for GET_VALUE.
+- Clear pending irq bit if failed to deliver.
+
+Tracked-On: OAM-94698
 Signed-off-by: Colin Xu <colin.xu@intel.com>
 ---
  default-configs/i386-softmmu.mak            |    1 +
  hw/gpio/Makefile.objs                       |    2 +
  hw/gpio/virtio-gpio-pci.c                   |   86 +
- hw/gpio/virtio-gpio.c                       | 1857 +++++++++++++++++++
+ hw/gpio/virtio-gpio.c                       | 1859 +++++++++++++++++++
  hw/i386/Kconfig                             |    4 +
  include/hw/pci/pci.h                        |    1 +
  include/hw/virtio/virtio-gpio.h             |  234 +++
  include/standard-headers/linux/virtio_ids.h |    1 +
- 8 files changed, 2186 insertions(+)
+ 8 files changed, 2188 insertions(+)
  create mode 100644 hw/gpio/virtio-gpio-pci.c
  create mode 100644 hw/gpio/virtio-gpio.c
  create mode 100644 include/hw/virtio/virtio-gpio.h
@@ -137,10 +141,10 @@ index 000000000000..1c39d40d6abf
 +type_init(virtio_gpio_pci_register)
 diff --git a/hw/gpio/virtio-gpio.c b/hw/gpio/virtio-gpio.c
 new file mode 100644
-index 000000000000..a808d45b9425
+index 000000000000..4c6df2150253
 --- /dev/null
 +++ b/hw/gpio/virtio-gpio.c
-@@ -0,0 +1,1857 @@
+@@ -0,0 +1,1859 @@
 +/*
 + * GPIO VirtIO Backend Driver
 + * virtio_gpio
@@ -529,7 +533,6 @@ index 000000000000..a808d45b9425
 +            doclose = true;
 +        }
 +        break;
-+    case GPIO_REQ_GET_VALUE:
 +    case GPIO_REQ_INPUT_DIRECTION:
 +        /* Make line GPIOHANDLE_REQUEST_INPUT */
 +        if (!(vline->handle_flags & GPIOHANDLE_REQUEST_INPUT)) {
@@ -540,6 +543,8 @@ index 000000000000..a808d45b9425
 +            doclose = true;
 +        }
 +        break;
++    /* Don't close and re-open to get value */
++    case GPIO_REQ_GET_VALUE:
 +    /* virtio_gpio_update_vlineinfo will update */
 +    case GPIO_REQ_GET_DIRECTION:
 +    /* virtio_gpio_hgpio_set_config will decide close or not */
@@ -1115,7 +1120,7 @@ index 000000000000..a808d45b9425
 +    elem = virtqueue_pop(vgpio->vq_irq_ev, sizeof(VirtQueueElement));
 +    if (!elem) {
 +        DPRINTF("vq_irq_ev has no element\n");
-+        goto out;
++        return -EINVAL;
 +    }
 +
 +    len = iov_from_buf(elem->in_sg, elem->in_num, 0, &intr, sizeof(uint64_t));
@@ -1131,7 +1136,6 @@ index 000000000000..a808d45b9425
 +    }
 +    vgpio->irq.stat++;
 +
-+out:
 +    return 0;
 +}
 +
@@ -1158,7 +1162,9 @@ index 000000000000..a808d45b9425
 +        vline->vgpio->irq.service = vline->vgpio->irq.pending;
 +        vline->vgpio->irq.pending = 0;
 +
-+        virtio_gpio_irq_deliver_intr(vline, vline->vgpio->irq.service);
++        /* Drop the interrupt if fail to deliver */
++        if(virtio_gpio_irq_deliver_intr(vline, vline->vgpio->irq.service))
++            vline->vgpio->irq.service &= ~BIT(vline->voffset);
 +    }
 +
 +    qemu_mutex_unlock(&vline->vgpio->irq.mutex);
@@ -2274,5 +2280,5 @@ index 585e07b27333..b00d28d56597 100644
 
  #endif /* _LINUX_VIRTIO_IDS_H */
 --
-2.28.0
+2.29.2
 
