@@ -1,16 +1,26 @@
-From b1aac80c9a3d762155df13dd478a8cef863745c9 Mon Sep 17 00:00:00 2001
+From f1f236360c2a72f3ba46df9341982bbc2c358b3a Mon Sep 17 00:00:00 2001
 From: Colin Xu <colin.xu@intel.com>
 Date: Wed, 24 Jun 2020 14:45:52 +0800
 Subject: [PATCH] Add VirtIO GPIO frondend driver.
 
 Front end driver of VirtIO GPIO implementation.
 
-Change-Id: I5cfe90c6086e603715da84fc40f8ef26a75c825e
-Tracked-On: OAM-92267
+V2:
+Free and re-allocate event virt-queue after suspend/resume.
+
+Change-Id: I08b21dbfa38bd4d697642ce0b475e84920100df2
+Tracked-On: OAM-94700
 Signed-off-by: Colin Xu <colin.xu@intel.com>
+---
+ drivers/gpio/Kconfig            |   9 +
+ drivers/gpio/Makefile           |   1 +
+ drivers/gpio/gpio-virtio.c      | 617 ++++++++++++++++++++++++++++++++
+ include/uapi/linux/virtio_ids.h |   1 +
+ 4 files changed, 628 insertions(+)
+ create mode 100644 drivers/gpio/gpio-virtio.c
 
 diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index 80aba4c028f0..0ef5f4bf7efd 100644
+index 80aba4c028f0..ac522ef2acc2 100644
 --- a/drivers/gpio/Kconfig
 +++ b/drivers/gpio/Kconfig
 @@ -666,6 +666,15 @@ config GPIO_AMD_FCH
@@ -43,10 +53,10 @@ index d2fd19c15bae..aac40df290db 100644
  obj-$(CONFIG_GPIO_WHISKEY_COVE)		+= gpio-wcove.o
 diff --git a/drivers/gpio/gpio-virtio.c b/drivers/gpio/gpio-virtio.c
 new file mode 100644
-index 000000000000..1bee4c12d79a
+index 000000000000..53b8e0e11288
 --- /dev/null
 +++ b/drivers/gpio/gpio-virtio.c
-@@ -0,0 +1,603 @@
+@@ -0,0 +1,617 @@
 +/*
 + * GPIO VirtIO Frontend Driver
 + * gpio-virtio.ko
@@ -616,17 +626,31 @@ index 000000000000..1bee4c12d79a
 +#ifdef CONFIG_PM_SLEEP
 +static int gpio_virtio_freeze(struct virtio_device *vdev)
 +{
++	struct gpio_virtio *vgpio = vdev->priv;
 +	/* Disable virtqueues. */
-+	if (vdev->config->reset)
++	if (vdev->config->reset) {
 +		vdev->config->reset(vdev);
-+	if (vdev->config->del_vqs)
++	}
++	if (vdev->config->del_vqs) {
 +		vdev->config->del_vqs(vdev);
++		kfree(vgpio->evts);
++	}
 +	return 0;
 +}
 +
 +static int gpio_virtio_restore(struct virtio_device *vdev)
 +{
-+	return init_vqs(vdev->priv);
++	int err;
++
++	err = init_vqs(vdev->priv);
++	if (err)
++		return err;
++
++	err = gpio_virtio_alloc_event_buffer(vdev->priv);
++	if (err)
++		return err;
++
++	return 0;
 +}
 +#endif
 +
@@ -663,5 +687,5 @@ index f86f8b7509c3..9cf76a28cef6 100644
  #define VIRTIO_ID_VIDEO_DEC    31 /* virtio video decoder */
 
 --
-2.28.0
+2.29.2
 
