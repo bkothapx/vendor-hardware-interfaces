@@ -1,0 +1,56 @@
+From c0e2683d0fdb9d1cc0f1039da12b6fc0a351a2d0 Mon Sep 17 00:00:00 2001
+From: Basanagouda Koppad <Basanagoudax.n.Koppad@intel.com>
+Date: Sun, 22 Nov 2020 23:36:49 +0530
+Subject: [PATCH] trusty: use ueventd.rc script to set trusty-ipc-dev0
+ permissions
+
+To set permission on a node created by the ueventd daemon, the
+uevent.rc configuration file must be used to ensure that the new
+permissions are applied as soon as the node file gets created.
+
+The current implementation based on the init.rc script can lead to a
+race condition where the module is loaded but the ueventrd daemon has
+not created the node yet and the chmod command is run on a
+non-exisiting file.
+
+The following logs have been observed and root cause to this race
+condition.
+
+    2710 2710 I TrustyKeymaster: Creating device
+    2710 2710 D TrustyKeymaster: Device address: 0x719381226200
+    2710 2710 E TrustyKeymaster: failed to connect to keymaster (-13)
+    2710 2710 D TrustyKeymaster: Device received configure
+
+Change-Id: Ieb2a6ffe4e40d42c4c697a43e4372af1228210bb
+Tracked-On: https://jira.devtools.intel.com/browse/OAM-88619
+Signed-off-by: Maxim Pleshivenkov <Maxim.Pleshivenkov@harman.com>
+Signed-off-by: Jeremy Compostella <jeremy.compostella@intel.com>
+Reviewed-on: https://android.intel.com:443/681714
+(cherry picked from commit 58e94ee4439e9266632383bdccc21a3c5e98c49a)
+Reviewed-on: https://android.intel.com:443/683336
+
+Tracked-On: OAM-94665
+Signed-off-by: Basanagouda Koppad <Basanagoudax.n.Koppad@intel.com>
+
+diff --git a/groups/trusty/true/init.rc b/groups/trusty/true/init.rc
+index 0dc67ac..39d7c85 100644
+--- a/groups/trusty/true/init.rc
++++ b/groups/trusty/true/init.rc
+@@ -23,6 +23,4 @@ service keyboxd /vendor/bin/keybox_provisioning -d /dev/trusty-ipc-dev0 -p /dev/
+
+ on post-fs
+     wait_for_prop vendor.modules.trusty.ready true
+-    # Update device node r/w attribute
+-    chmod 666 /dev/trusty-ipc-dev0
+     chmod 666 /dev/vport0p1
+diff --git a/groups/trusty/true/ueventd.rc b/groups/trusty/true/ueventd.rc
+index 5a82425..2799881 100644
+--- a/groups/trusty/true/ueventd.rc
++++ b/groups/trusty/true/ueventd.rc
+@@ -1,2 +1,2 @@
+ /dev/block/p*/*/*/by-name/teedata      0660 system system
+-
++/dev/trusty-ipc-dev0                   0666 root root
+--
+2.29.2
+

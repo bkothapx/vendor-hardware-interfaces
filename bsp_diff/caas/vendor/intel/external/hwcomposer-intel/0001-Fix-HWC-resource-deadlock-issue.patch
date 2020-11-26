@@ -1,0 +1,37 @@
+From bfce7070442305685c873ab84937e5d8d3b64940 Mon Sep 17 00:00:00 2001
+From: Basanagouda Koppad <Basanagoudax.n.Koppad@intel.com>
+Date: Wed, 4 Nov 2020 11:29:11 +0530
+Subject: [PATCH] Fix HWC resource deadlock issue
+
+Tracked-on:OAM-94497
+Signed-off-by: Basanagouda Koppad <Basanagoudax.n.Koppad@intel.com>
+
+diff --git a/common/compositor/compositor.cpp b/common/compositor/compositor.cpp
+index 869e494..4b03983 100644
+--- a/common/compositor/compositor.cpp
++++ b/common/compositor/compositor.cpp
+@@ -65,12 +65,21 @@ bool Compositor::Draw(DisplayPlaneStateList &comp_planes,
+   std::vector<DrawState> media_state;
+   std::vector<OverlayBuffer *> draw_buffers;
+   std::vector<HwcRect<int>> display_frame;
++  size_t  element_size = 0;
+
+   for (auto &layer : layers) {
+     draw_buffers.emplace_back(layer.GetBuffer());
+     display_frame.emplace_back(layer.GetDisplayFrame());
+   }
+
++  for (DisplayPlaneState &plane : comp_planes) {
++    if (plane.NeedsOffScreenComposition())
++      element_size++;
++  }
++
++  if (element_size > 0)
++    draw_state.reserve(element_size);
++
+   for (DisplayPlaneState &plane : comp_planes) {
+     if (plane.Scanout()) {
+       if (!plane.IsSurfaceRecycled()) {
+--
+2.29.2
+

@@ -1,0 +1,35 @@
+From 395a79d5a0974b1833050863180c03d3866b1dee Mon Sep 17 00:00:00 2001
+From: saranya <saranya.gopal@intel.com>
+Date: Wed, 5 Dec 2018 22:37:17 +0530
+Subject: [PATCH 3/3] sepolicy: Change role property to vendor namespace
+
+This patch changes 'persist.sys.usb.role' to
+'vendor.sys.usb.role'. Also, now the system app
+does not access this property anymore.
+So, this patch removes the permission for
+system app to access this property.
+
+Change-Id: I4c4e21997b041b61af212aa05a7a19525206e050
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-70840
+Signed-off-by: saranya <saranya.gopal@intel.com>
+Reviewed-on: https://android.intel.com:443/654021
+
+diff --git a/usb-role-switch/property_contexts b/usb-role-switch/property_contexts
+index 7807297..28fde0a 100644
+--- a/usb-role-switch/property_contexts
++++ b/usb-role-switch/property_contexts
+@@ -1 +1 @@
+-persist.sys.usb.role u:object_r:vendor_usbrole_prop:s0
++vendor.sys.usb.role u:object_r:vendor_usbrole_prop:s0
+diff --git a/usb-role-switch/system_app.te b/usb-role-switch/system_app.te
+deleted file mode 100644
+index b3b5e34..0000000
+--- a/usb-role-switch/system_app.te
++++ /dev/null
+@@ -1,3 +0,0 @@
+-typeattribute system_app system_writes_vendor_properties_violators;
+-
+-set_prop(system_app, vendor_usbrole_prop)
+--
+2.29.2
+
