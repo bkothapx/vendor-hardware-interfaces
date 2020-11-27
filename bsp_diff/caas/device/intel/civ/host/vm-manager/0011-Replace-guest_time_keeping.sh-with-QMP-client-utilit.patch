@@ -1,4 +1,4 @@
-From e7e7fd4d9215b75664d221c4926df18eb946eaa9 Mon Sep 17 00:00:00 2001
+From 65de3d2eede2e86b3207faf5bf37d78070d80c02 Mon Sep 17 00:00:00 2001
 From: Zhuocheng Ding <zhuocheng.ding@intel.com>
 Date: Fri, 11 Sep 2020 15:14:05 +0800
 Subject: [PATCH] Replace guest_time_keeping.sh with QMP client utility
@@ -14,10 +14,10 @@ Signed-off-by: Zhuocheng Ding <zhuocheng.ding@intel.com>
  1 file changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
-index 4d4d57b..395360b 100755
+index 8ebf31c..2d4182f 100755
 --- a/scripts/start_civ.sh
 +++ b/scripts/start_civ.sh
-@@ -643,9 +643,10 @@ function set_guest_pm() {
+@@ -645,9 +645,10 @@ function set_guest_pm() {
 
  function set_guest_time_keep() {
      local guest_time_keep_daemon=$SCRIPTS_DIR/guest_time_keeping.sh
@@ -30,15 +30,15 @@ index 4d4d57b..395360b 100755
          GUEST_TIME_KEEP="-qmp pipe:$guest_time_keep_pipe"
      fi
  }
-@@ -760,7 +761,7 @@ function show_help() {
+@@ -775,7 +776,7 @@ function show_help() {
      printf "\t--thermal-mediation enable thermal mediation.\n"
      printf "\t--battery-mediation enable battery mediation.\n"
      printf "\t--guest-pm-control allow guest control host PM.\n"
 -    printf "\t--guest-time-keep reflect guest time setting on Host OS.\n"
 +    printf "\t--guest-time-keep reflect guest RTC settings on Host OS.\n"
+     printf "\t--qmp-pipe specify the name of the pipe used for qmp communication.\n"
      printf "\t--allow-suspend option allow guest enter S3 state, by default guest cannot enter S3 state.\n"
      printf "\t--disable-kernel-irqchip set kernel_irqchip=off.\n"
-     printf "\t--passthrough-pwr-vol-button passthrough the power button and volume button to guest.\n"
 --
 2.17.1
 

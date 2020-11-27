@@ -1,4 +1,4 @@
-From ae10e308ca00df930a119221994b5c78a840b072 Mon Sep 17 00:00:00 2001
+From 75ef3f45245a29b5f8aa2bbcca9d29c56ae7c888 Mon Sep 17 00:00:00 2001
 From: Zhuo Peng <zhuo.peng@intel.com>
 Date: Fri, 28 Aug 2020 21:23:01 +0800
 Subject: [PATCH] Add Power and Volume Button support in Guest VM
@@ -36,10 +36,10 @@ index 9d6649b..9a651ef 100755
          sudo systemctl set-default multi-user.target
          reboot_required=1
 diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
-index 4e2162c..c1503fc 100755
+index 6f3fea6..44ca166 100755
 --- a/scripts/start_civ.sh
 +++ b/scripts/start_civ.sh
-@@ -45,6 +45,8 @@ GUSET_VTPM="-chardev socket,id=chrtpm,path=$WORK_DIR/vtpm0/swtpm-sock -tpmdev em
+@@ -47,6 +47,8 @@ GUEST_QMP_PIPE=
  GUEST_AAF="-fsdev local,security_model=none,id=fsdev_aaf,path=$WORK_DIR/aaf -device virtio-9p-pci,fsdev=fsdev_aaf,mount_tag=aaf"
  GUEST_AAF_DIR=$WORK_DIR/aaf
  GUEST_AAF_CONFIG=$GUEST_AAF_DIR/mixins.spec
@@ -48,7 +48,7 @@ index 4e2162c..c1503fc 100755
 
  GUEST_STATIC_OPTION="\
   -name caas-vm \
-@@ -355,6 +357,7 @@ function setup_qxl_vga() {
+@@ -357,6 +359,7 @@ function setup_ramfb_vga() {
 
  function set_graphics() {
      OIFS=$IFS IFS=',' sub_param=($1) IFS=$OIFS
@@ -56,8 +56,8 @@ index 4e2162c..c1503fc 100755
 
      if [[ ${sub_param[0]} == "GVT-d" ]]; then
          setup_gvtd ${sub_param[@]} || return -1
-@@ -544,6 +547,20 @@ function set_guest_time_keep() {
-     fi
+@@ -558,6 +561,20 @@ function setup_qmp_pipe() {
+     GUEST_QMP_PIPE="-qmp pipe:$qmp_pipe"
  }
 
 +function set_guest_pwr_vol_button() {
@@ -77,23 +77,23 @@ index 4e2162c..c1503fc 100755
  function cleanup() {
      cleanup_rpmb_dev
      cleanup_thermal_mediation
-@@ -593,6 +610,7 @@ function launch_guest() {
+@@ -607,6 +624,7 @@ function launch_guest() {
                $GUEST_WIFI_PT_DEV \
                $GUEST_PM_CTRL \
                $GUEST_TIME_KEEP \
 +              $GUEST_POWER_BUTTON \
+               $GUEST_QMP_PIPE \
                $GUSET_VTPM \
                $GUEST_AAF \
-               $GUEST_KIRQ_CHIP \
-@@ -634,6 +652,7 @@ function show_help() {
-     printf "\t--guest-time-keep reflect guest time setting on Host OS.\n"
+@@ -650,6 +668,7 @@ function show_help() {
+     printf "\t--qmp-pipe specify the name of the pipe used for qmp communication.\n"
      printf "\t--allow-suspend option allow guest enter S3 state, by default guest cannot enter S3 state.\n"
      printf "\t--disable-kernel-irqchip set kernel_irqchip=off.\n"
 +    printf "\t--passthrough-pwr-vol-button passthrough the power button and volume button to guest.\n"
  }
 
  function parse_arg() {
-@@ -738,6 +757,10 @@ function parse_arg() {
+@@ -759,6 +778,10 @@ function parse_arg() {
                  disable_kernel_irq_chip
                  ;;
 
