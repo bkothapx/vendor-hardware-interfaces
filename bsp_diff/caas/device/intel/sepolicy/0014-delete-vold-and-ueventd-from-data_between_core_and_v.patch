@@ -1,0 +1,49 @@
+From 109418ae9a0d789b0a3e950153775c895fc0d508 Mon Sep 17 00:00:00 2001
+From: "ji, zhenlong z" <zhenlong.z.ji@intel.com>
+Date: Thu, 5 Sep 2019 13:10:31 +0800
+Subject: [PATCH 3/5] delete vold and ueventd from
+ data_between_core_and_vendor_violators
+
+Change-Id: Ie4d6c1a212fd7bb3b15cdd0b3a030f0b4afc8745
+Tracked-On: https://jira.devtools.intel.com/browse/OAM-85574
+Signed-off-by: ji, zhenlong z <zhenlong.z.ji@intel.com>
+Reviewed-on: https://android.intel.com:443/679694
+Signed-off-by: Kothapeta, BikshapathiX <bikshapathix.kothapeta@intel.com>
+
+diff --git a/config-partition/ueventd.te b/config-partition/ueventd.te
+deleted file mode 100644
+index 5f0f376..0000000
+--- a/config-partition/ueventd.te
++++ /dev/null
+@@ -1,6 +0,0 @@
+-#
+-# ueventd
+-#
+-
+-allow ueventd config_file:dir search;
+-allow ueventd config_file:file { read getattr open };
+diff --git a/config-partition/violators_blacklist.te b/config-partition/violators_blacklist.te
+deleted file mode 100644
+index 083b7fb..0000000
+--- a/config-partition/violators_blacklist.te
++++ /dev/null
+@@ -1,3 +0,0 @@
+-typeattribute vold data_between_core_and_vendor_violators;
+-typeattribute ueventd data_between_core_and_vendor_violators;
+-
+diff --git a/config-partition/vold.te b/config-partition/vold.te
+deleted file mode 100644
+index 78940f2..0000000
+--- a/config-partition/vold.te
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#
+-# vold
+-#
+-
+-allow vold config_file:dir r_dir_perms;
+-# uapi/linux/fs.h:#define FITRIM _IOWR('X', 121, struct fstrim_range) /* Trim */
+-#allow vold config_file:dir 0x5879;
+--
+2.29.2
+

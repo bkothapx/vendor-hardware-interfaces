@@ -1,0 +1,60 @@
+From 555758204f503dcbe876096fa6dc2eba943f5d40 Mon Sep 17 00:00:00 2001
+From: Jeevaka Prabu Badrappan <jeevaka.badrappan@intel.com>
+Date: Wed, 4 Sep 2019 10:44:43 +0530
+Subject: [PATCH 2/5] Remove not needed sepolicy causing ATS test case failure
+
+As oem_config file is not used, remove the sepolicy
+related to /oem_config/bluetooth file access.
+
+Change-Id: Ibf4e10cf6988b6b3a3fc695c2432dd01b2e3669b
+Tracked-On: OAM-85572
+Signed-off-by: Jeevaka Prabu Badrappan <jeevaka.badrappan@intel.com>
+Reviewed-on: https://android.intel.com:443/679532
+
+diff --git a/bluetooth/common/file_contexts b/bluetooth/common/file_contexts
+index 4fec060..12ce764 100644
+--- a/bluetooth/common/file_contexts
++++ b/bluetooth/common/file_contexts
+@@ -1,7 +1,6 @@
+ # /system/etc/bluetooth(/.*)?           u:object_r:bluetooth_config_file:s0
+ (/system)?/vendor/bin/bt_nvm_init.sh     u:object_r:init_bt_nvm_exec:s0
+ /vendor/bin/hciattach       u:object_r:hci_attach_exec:s0
+-/oem_config/bluetooth                  u:object_r:bluetooth_data_file:s0
+
+ # setup by device/intel/common/bluetooth/rfkill/rfkill_bt.sh
+ /sys/devices/pci0000:00/8086228A:00/.*/rfkill/rfkill[0-9]+/state        u:object_r:sysfs_bluetooth_writable:s0
+diff --git a/bluetooth/common/hal_bluetooth_vbt.te b/bluetooth/common/hal_bluetooth_vbt.te
+index dafb4c1..bf9e4e5 100644
+--- a/bluetooth/common/hal_bluetooth_vbt.te
++++ b/bluetooth/common/hal_bluetooth_vbt.te
+@@ -17,10 +17,6 @@
+ #    type hal_bluetooth_default_exec, exec_type, file_type;
+ #    init_daemon_domain(hal_bluetooth_default)
+ #
+-#    # Logging for backward compatibility
+-#    allow hal_bluetooth_default bluetooth_data_file:dir ra_dir_perms;
+-#    allow hal_bluetooth_default bluetooth_data_file:file create_file_perms;
+-#
+ # Google allow vendor to write his own hal service, but do not suggest
+ # directly modify the default hal service code. Google also give the reference
+ # code(device/linaro/hikey/bluetooth) about how to write vendor's own hal
+@@ -40,9 +36,6 @@ type hal_bluetooth_vbt_exec, exec_type, file_type, vendor_file_type;
+ init_daemon_domain(hal_bluetooth_vbt)
+
+ set_prop(hal_bluetooth_vbt, vendor_bluetooth_prop)
+-# Logging for backward compatibility
+-allow hal_bluetooth_vbt bluetooth_data_file:dir ra_dir_perms;
+-allow hal_bluetooth_vbt bluetooth_data_file:file create_file_perms;
+
+ allow hal_bluetooth_vbt self:socket create_socket_perms;
+
+diff --git a/bluetooth/common/violators_blacklist.te b/bluetooth/common/violators_blacklist.te
+deleted file mode 100644
+index 1f1a53c..0000000
+--- a/bluetooth/common/violators_blacklist.te
++++ /dev/null
+@@ -1 +0,0 @@
+-typeattribute hal_bluetooth_vbt data_between_core_and_vendor_violators;
+--
+2.29.2
+
