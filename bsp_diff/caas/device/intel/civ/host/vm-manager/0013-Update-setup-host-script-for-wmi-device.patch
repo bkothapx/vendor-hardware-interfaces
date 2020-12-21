@@ -1,4 +1,4 @@
-From 8411b475fcf1b96ab12fe9670d889c64fb2fcde6 Mon Sep 17 00:00:00 2001
+From e4798c613e08485398eb3b9944a2654413e3fc5c Mon Sep 17 00:00:00 2001
 From: Swee Yee Fonn <swee.yee.fonn@intel.com>
 Date: Wed, 14 Oct 2020 10:53:08 +0800
 Subject: [PATCH] Update setup host script for wmi device
@@ -6,15 +6,12 @@ Subject: [PATCH] Update setup host script for wmi device
 Add additional setup for support
 HP wmi device
 
+Change-Id: Iacd0f57944f7cba5dc8d0895d9744e6678b774d9
 Tracked-On: OAM-94299
-Change-Id: Iccf51a8634bcf13a15a11c2c1ea2afa4b4758888
 Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
----
- scripts/setup_host.sh | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/scripts/setup_host.sh b/scripts/setup_host.sh
-index 3e09c6b..02526fc 100755
+index 8d77773..028f078 100755
 --- a/scripts/setup_host.sh
 +++ b/scripts/setup_host.sh
 @@ -28,7 +28,7 @@ function ubu_changes_require(){
@@ -23,9 +20,9 @@ index 3e09c6b..02526fc 100755
      fi
 -    sudo apt install -y wget mtools ovmf dmidecode python3-usb python3-pyudev pulseaudio jq acpica-tools acpid
 +    sudo apt install -y wget mtools ovmf dmidecode python3-usb python3-pyudev pulseaudio jq acpica-tools acpid bash
- }
 
- function ubu_install_qemu_gvt(){
+     # Install libs for vm-manager
+     sudo apt install -y libglib2.0-dev libncurses-dev libuuid1 uuid-dev libjson-c-dev
 --
-2.17.1
+2.29.2
 

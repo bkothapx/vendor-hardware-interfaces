@@ -1,29 +1,27 @@
-From 9c02af353e8412e3e39986a40aeed1cda35e5afb Mon Sep 17 00:00:00 2001
-From: Swee Yee Fonn <swee.yee.fonn@intel.com>
-Date: Fri, 18 Sep 2020 10:56:59 +0800
+From 9ced49eedb1000c6369ea1dd0b5e07f429a7d8e9 Mon Sep 17 00:00:00 2001
+From: Kishan Mochi <kishan.mochi@intel.com>
+Date: Mon, 21 Dec 2020 12:26:06 +0530
 Subject: [PATCH] CIV: sensor hal wo static list
 
 Enable sensor mediation hal
 without static sensor list
 reporting.
 
-Change-Id: I28e317dfc07259af2bbf86f728998fb3bb11a998
 Tracked-On: OAM-92946
 Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
----
- caas/mixins.spec | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Signed-off-by: Kishan Mochi <kishan.mochi@intel.com>
 
 diff --git a/caas/mixins.spec b/caas/mixins.spec
-index 68d5def..b829247 100755
+index 9464fe0..dcc468f 100755
 --- a/caas/mixins.spec
 +++ b/caas/mixins.spec
-@@ -86,4 +86,4 @@ atrace: true
+@@ -85,5 +85,5 @@ atrace: true
  firmware: true(all_firmwares=false)
  aaf: true
  suspend: auto
 -sensors: mediation
 +sensors: mediation(disable_static_sensor_list=true)
--- 
-2.17.1
+ bugreport: true
+--
+2.29.2
 

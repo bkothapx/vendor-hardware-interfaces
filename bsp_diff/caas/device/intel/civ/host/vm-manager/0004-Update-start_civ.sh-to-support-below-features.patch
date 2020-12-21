@@ -1,4 +1,4 @@
-From fbcc17470157086a9bc290b83c6ce5fb7d48e840 Mon Sep 17 00:00:00 2001
+From 003f4e0562d3d45596cc34c8548e3486f638e6a1 Mon Sep 17 00:00:00 2001
 From: Colin Xu <colin.xu@intel.com>
 Date: Fri, 28 Aug 2020 12:57:50 +0800
 Subject: [PATCH] Update start_civ.sh to support below features
@@ -14,15 +14,12 @@ merge to a single patch.
 Change-Id: I810a7bd47eb6da46812e5442e514d5495736bbb8
 Tracked-On: OAM-92368
 Signed-off-by: Colin Xu <colin.xu@intel.com>
----
- scripts/start_civ.sh | 104 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 104 insertions(+)
 
 diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
-index c1503fc..44e1a39 100755
+index 37b7c7e..8ecc272 100755
 --- a/scripts/start_civ.sh
 +++ b/scripts/start_civ.sh
-@@ -39,6 +39,9 @@ GUEST_UDC_PT_DEV=
+@@ -40,6 +40,9 @@ GUEST_UDC_PT_DEV=
  GUEST_AUDIO_PT_DEV=
  GUEST_ETH_PT_DEV=
  GUEST_WIFI_PT_DEV=
@@ -32,10 +29,10 @@ index c1503fc..44e1a39 100755
  GUEST_PM_CTRL=
  GUEST_TIME_KEEP=
  GUSET_VTPM="-chardev socket,id=chrtpm,path=$WORK_DIR/vtpm0/swtpm-sock -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-crb,tpmdev=tpm0"
-@@ -391,6 +394,62 @@ function set_block_dev() {
+@@ -393,6 +396,62 @@ function set_block_dev() {
      [ ! -z $1 ] && GUEST_BLK_DEV+="-drive file=$1,format=raw"
  }
- 
+
 +function set_acpi_ssdt() {
 +    local sku=$1
 +    local ssdt_dsl="$WORK_DIR/skucfg/${sku}/ssdt.dsl"
@@ -95,10 +92,10 @@ index c1503fc..44e1a39 100755
  function set_extra_qcmd() {
      GUEST_EXTRA_QCMD=$1
  }
-@@ -529,6 +588,31 @@ function set_pt_wifi() {
+@@ -531,6 +590,31 @@ function set_pt_wifi() {
      done
  }
- 
+
 +function set_pt_i2c() {
 +    local I2C_PCI=()
 +    local idx=0
@@ -127,7 +124,7 @@ index c1503fc..44e1a39 100755
  function set_guest_pm() {
      local guest_pm_ctrl_daemon=$SCRIPTS_DIR/guest_pm_control
      if [ -f $guest_pm_ctrl_daemon ]; then
-@@ -608,6 +692,9 @@ function launch_guest() {
+@@ -622,6 +706,9 @@ function launch_guest() {
                $GUEST_AUDIO_PT_DEV \
                $GUEST_ETH_PT_DEV \
                $GUEST_WIFI_PT_DEV \
@@ -136,8 +133,8 @@ index c1503fc..44e1a39 100755
 +              $GUEST_VIRTIO_GPIO \
                $GUEST_PM_CTRL \
                $GUEST_TIME_KEEP \
-               $GUEST_POWER_BUTTON \
-@@ -640,12 +727,15 @@ function show_help() {
+               $GUEST_QMP_PIPE \
+@@ -655,12 +742,15 @@ function show_help() {
      printf "\t-s  specify guest share folder path, eg. \"-s /path/to/share/with/guest\"\n"
      printf "\t-p  specify host forward ports, current support adb/fastboot, eg. \"-p adb=6666,fastboot=7777\"\n"
      printf "\t-b  specify host block device as guest virtual device, eg.\" -b /dev/mmcblk0 \"\n"
@@ -153,10 +150,10 @@ index c1503fc..44e1a39 100755
      printf "\t--thermal-mediation enable thermal mediation.\n"
      printf "\t--battery-mediation enable battery mediation.\n"
      printf "\t--guest-pm-control allow guest control host PM.\n"
-@@ -708,6 +798,16 @@ function parse_arg() {
+@@ -724,6 +814,16 @@ function parse_arg() {
                  shift
                  ;;
- 
+
 +            -ssdt)
 +                set_acpi_ssdt $2
 +                shift
@@ -170,10 +167,10 @@ index c1503fc..44e1a39 100755
              -e)
                  set_extra_qcmd "$2"
                  shift
-@@ -733,6 +833,10 @@ function parse_arg() {
+@@ -754,6 +854,10 @@ function parse_arg() {
                  set_pt_wifi
                  ;;
- 
+
 +            --passthrough-pci-i2c)
 +                set_pt_i2c
 +                ;;
@@ -181,6 +178,6 @@ index c1503fc..44e1a39 100755
              --thermal-mediation)
                  setup_thermal_mediation
                  ;;
--- 
-2.17.1
+--
+2.29.2
 

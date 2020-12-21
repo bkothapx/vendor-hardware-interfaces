@@ -1,22 +1,17 @@
-From 6fb547ec2daf417504ad9505cc63c9aca656bdbf Mon Sep 17 00:00:00 2001
+From 8c59c9a699ee84cbc13a558f1093eb8f69ce99ac Mon Sep 17 00:00:00 2001
 From: Yan Zhao <yan.y.zhao@intel.com>
 Date: Fri, 18 Sep 2020 20:41:31 +0800
 Subject: [PATCH] qemu auto launch script for WMI device
 
 add --hp-wmi-mediation option for WMI device
 
-Change-Id: Icb7e3d8c528fc490d6fc139136f8092c29e39354
+Change-Id: I92216bdf9a79cd12c736ab9f55d4c6df33e9fe60
 Tracked-On: OAM-92883
 Signed-off-by: Yan Zhao <yan.y.zhao@intel.com>
 Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
----
- scripts/setup_host.sh |  2 +-
- scripts/start_civ.sh  | 30 ++++++++++++++++++++++++++++++
- 2 files changed, 31 insertions(+), 1 deletion(-)
- mode change 100755 => 100644 scripts/start_civ.sh
 
 diff --git a/scripts/setup_host.sh b/scripts/setup_host.sh
-index 608348d..cb7b744 100755
+index b60181b..8d77773 100755
 --- a/scripts/setup_host.sh
 +++ b/scripts/setup_host.sh
 @@ -28,7 +28,7 @@ function ubu_changes_require(){
@@ -25,16 +20,16 @@ index 608348d..cb7b744 100755
      fi
 -    sudo apt install -y wget mtools ovmf dmidecode python3-usb python3-pyudev pulseaudio jq acpica-tools
 +    sudo apt install -y wget mtools ovmf dmidecode python3-usb python3-pyudev pulseaudio jq acpica-tools acpid
- }
 
- function ubu_install_qemu_gvt(){
+     # Install libs for vm-manager
+     sudo apt install -y libglib2.0-dev libncurses-dev libuuid1 uuid-dev libjson-c-dev
 diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
 old mode 100755
 new mode 100644
-index 395360b..04b3276
+index 7259fbe..30a16ea
 --- a/scripts/start_civ.sh
 +++ b/scripts/start_civ.sh
-@@ -24,6 +24,7 @@ GUEST_RPMB_DEV_PID=
+@@ -25,6 +25,7 @@ GUEST_RPMB_DEV_PID=
  GUEST_RPMB_DEV_SOCK=
  GUEST_THERMAL_DAEMON_PID=
  GUEST_BATTERY_DAEMON_PID=
@@ -42,7 +37,7 @@ index 395360b..04b3276
  GUEST_IMAGE=$WORK_DIR/android.qcow2
  GUEST_VSOCK="-device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=3"
  GUEST_SHARE_FOLDER=
-@@ -51,6 +52,7 @@ GUEST_AAF_DIR=$WORK_DIR/aaf
+@@ -53,6 +54,7 @@ GUEST_AAF_DIR=$WORK_DIR/aaf
  GUEST_AAF_CONFIG=$GUEST_AAF_DIR/mixins.spec
  GUEST_POWER_BUTTON=
  GUEST_GRAPHIC_MODE=
@@ -50,7 +45,7 @@ index 395360b..04b3276
 
  GUEST_STATIC_OPTION="\
   -name caas-vm \
-@@ -151,6 +153,28 @@ function setup_swtpm() {
+@@ -153,6 +155,28 @@ function setup_swtpm() {
      swtpm socket --tpmstate dir=$WORK_DIR/vtpm0 --tpm2 --ctrl type=unixio,path=$WORK_DIR/vtpm0/swtpm-sock &
  }
 
@@ -79,7 +74,7 @@ index 395360b..04b3276
  function setup_thermal_mediation() {
      local thermal_daemon=$SCRIPTS_DIR/thermsys
      if [ -f $thermal_daemon ]; then
-@@ -669,6 +691,7 @@ function cleanup() {
+@@ -683,6 +707,7 @@ function cleanup() {
      cleanup_rpmb_dev
      cleanup_thermal_mediation
      cleanup_battery_mediation
@@ -87,7 +82,7 @@ index 395360b..04b3276
      [[ -z $GUEST_USB_PT_DEV ]] || set_pt_usb unset
      [[ -z $GUEST_AUDIO_PT_DEV ]] || set_pt_audio unset
      [[ -z $GUEST_UDC_PT_DEV ]] || set_pt_udc unset
-@@ -724,6 +747,7 @@ function launch_guest() {
+@@ -739,6 +764,7 @@ function launch_guest() {
                $GUEST_KIRQ_CHIP \
                $GUEST_STATIC_OPTION \
                $GUEST_EXTRA_QCMD \
@@ -95,7 +90,7 @@ index 395360b..04b3276
      "
 
      echo $EXE_CMD
-@@ -891,6 +915,10 @@ function parse_arg() {
+@@ -913,6 +939,10 @@ function parse_arg() {
                  set_guest_pwr_vol_button
                  ;;
 
@@ -107,5 +102,5 @@ index 395360b..04b3276
                  echo "Error: Invalid option $1"
                  show_help
 --
-2.17.1
+2.29.2
 
