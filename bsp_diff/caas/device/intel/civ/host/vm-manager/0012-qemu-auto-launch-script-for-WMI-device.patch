@@ -91,7 +91,7 @@ index 7259fbe..30a16ea
 
      echo $EXE_CMD
 @@ -913,6 +939,10 @@ function parse_arg() {
-                 set_guest_pwr_vol_button
+                 start_thermal_daemon
                  ;;
 
 +            --hp-wmi-mediation)

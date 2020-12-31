@@ -1,4 +1,4 @@
-From ee9d58eb36db0feb84c0603bc807fbd2707683df Mon Sep 17 00:00:00 2001
+From 4704d01b77748d10bd0265d562b4e1997a01df32 Mon Sep 17 00:00:00 2001
 From: Swee Yee Fonn <swee.yee.fonn@intel.com>
 Date: Wed, 4 Nov 2020 20:24:17 +0800
 Subject: [PATCH] Support keybox provisioning over vsock
@@ -20,7 +20,7 @@ Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
  3 files changed, 24 insertions(+)
 
 diff --git a/scripts/setup_host.sh b/scripts/setup_host.sh
-index 81f1e4c..b2d37ef 100755
+index 831b0aa..7b58d5f 100755
 --- a/scripts/setup_host.sh
 +++ b/scripts/setup_host.sh
 @@ -109,6 +109,19 @@ function ubu_build_ovmf_gvt(){
@@ -43,8 +43,8 @@ index 81f1e4c..b2d37ef 100755
  function ubu_enable_host_gvt(){
      if [[ ! `cat /etc/default/grub` =~ "i915.enable_gvt=1 intel_iommu=on i915.force_probe=*" ]]; then
          read -p "The grub entry in '/etc/default/grub' will be updated for enabling GVT-g and GVT-d, do you want to continue? [Y/n]" res
-@@ -364,6 +377,7 @@ prepare_required_scripts
- ubu_thermal_conf
+@@ -354,6 +367,7 @@ ubu_enable_additional_kernel_params
+ prepare_required_scripts
  setup_sof
  ubu_install_swtpm
 +ubu_install_tss2
@@ -52,7 +52,7 @@ index 81f1e4c..b2d37ef 100755
  ask_reboot
 
 diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
-index 345d823..1176abb 100755
+index 175b88a..4a14abd 100755
 --- a/scripts/start_civ.sh
 +++ b/scripts/start_civ.sh
 @@ -22,6 +22,7 @@ GUEST_KIRQ_CHIP="-machine kernel_irqchip=on"
@@ -63,7 +63,7 @@ index 345d823..1176abb 100755
  GUEST_RPMB_DEV_SOCK=
  GUEST_THERMAL_DAEMON_PID=
  GUEST_BATTERY_DAEMON_PID=
-@@ -110,11 +111,15 @@ function kill_daemon_proc() {
+@@ -123,11 +124,15 @@ function kill_daemon_proc() {
 
  function setup_rpmb_dev() {
      local RPMB_DEV=$SCRIPTS_DIR/rpmb_dev
@@ -79,7 +79,7 @@ index 345d823..1176abb 100755
          echo "Creating RPMB DATA..."
          $RPMB_DEV --dev $RPMB_DATA --init --size 2048
      fi
-@@ -148,6 +153,7 @@ function setup_rpmb_dev() {
+@@ -161,6 +166,7 @@ function setup_rpmb_dev() {
  function cleanup_rpmb_dev() {
      kill_daemon_proc "$GUEST_RPMB_DEV_PID" "rpmb_dev"
      [[ -z "$GUEST_RPMB_DEV_SOCK" ]] || ( [[ -S $GUEST_RPMB_DEV_SOCK ]] && rm $GUEST_RPMB_DEV_SOCK )
@@ -103,5 +103,5 @@ index 02038c3..82b960f 100755
        exit 1
      fi
 --
-2.17.1
+2.30.0
 
