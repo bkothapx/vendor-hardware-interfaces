@@ -1,0 +1,57 @@
+From 82d15430ac89a583dbc6f0020d53d58575201ed2 Mon Sep 17 00:00:00 2001
+From: Zhuo Peng <zhuo.peng@intel.com>
+Date: Tue, 19 Jan 2021 17:10:23 +0800
+Subject: [PATCH] Add '--external-wakeup-mode' option to use host rtc
+
+Change-Id: I1052bcc26430f30f61fe742c6db651c1b656be90
+Tracked-On: OAM-95482
+Signed-off-by: Zhuo Peng <zhuo.peng@intel.com>
+---
+ scripts/start_civ.sh | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
+index 4a14abd..07f133b 100755
+--- a/scripts/start_civ.sh
++++ b/scripts/start_civ.sh
+@@ -57,6 +57,7 @@ GUEST_AAF_CONFIG=$GUEST_AAF_DIR/mixins.spec
+ GUEST_POWER_BUTTON=
+ GUEST_GRAPHIC_MODE=
+ GUEST_WMI_DEV=
++GUEST_EXTERNAL_WAKEUP=
+
+ GUEST_STATIC_OPTION="\
+  -name caas-vm \
+@@ -740,6 +741,10 @@ function set_guest_pwr_vol_button() {
+     cd -
+ }
+
++function enable_external_wakeup_mode() {
++    GUEST_EXTERNAL_WAKEUP='-global mc146818rtc.external_wakeup=on'
++}
++
+ function cleanup() {
+     cleanup_rpmb_dev
+     cleanup_thermal_mediation
+@@ -803,6 +808,7 @@ function launch_guest() {
+               $GUEST_STATIC_OPTION \
+               $GUEST_EXTRA_QCMD \
+               $GUEST_WMI_DEV \
++              $GUEST_EXTERNAL_WAKEUP \
+     "
+
+     echo $EXE_CMD
+@@ -986,6 +992,10 @@ function parse_arg() {
+                 setup_hp_wmi_listener
+                 ;;
+
++            --external-wakeup-mode)
++                enable_external_wakeup_mode
++                ;;
++
+             -?*)
+                 echo "Error: Invalid option $1"
+                 show_help
+--
+2.17.1
+
