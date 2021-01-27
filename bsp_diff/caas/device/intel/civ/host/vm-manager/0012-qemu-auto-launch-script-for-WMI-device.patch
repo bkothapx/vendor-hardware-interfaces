@@ -1,4 +1,4 @@
-From 8c59c9a699ee84cbc13a558f1093eb8f69ce99ac Mon Sep 17 00:00:00 2001
+From 1c014a08c5384f872981d1cb5ca90aeaa45cac21 Mon Sep 17 00:00:00 2001
 From: Yan Zhao <yan.y.zhao@intel.com>
 Date: Fri, 18 Sep 2020 20:41:31 +0800
 Subject: [PATCH] qemu auto launch script for WMI device
@@ -9,9 +9,14 @@ Change-Id: I92216bdf9a79cd12c736ab9f55d4c6df33e9fe60
 Tracked-On: OAM-92883
 Signed-off-by: Yan Zhao <yan.y.zhao@intel.com>
 Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
+---
+ scripts/setup_host.sh |  2 +-
+ scripts/start_civ.sh  | 30 ++++++++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+), 1 deletion(-)
+ mode change 100755 => 100644 scripts/start_civ.sh
 
 diff --git a/scripts/setup_host.sh b/scripts/setup_host.sh
-index b60181b..8d77773 100755
+index 7ab47a3..cbe8193 100755
 --- a/scripts/setup_host.sh
 +++ b/scripts/setup_host.sh
 @@ -28,7 +28,7 @@ function ubu_changes_require(){
@@ -20,13 +25,13 @@ index b60181b..8d77773 100755
      fi
 -    sudo apt install -y wget mtools ovmf dmidecode python3-usb python3-pyudev pulseaudio jq acpica-tools
 +    sudo apt install -y wget mtools ovmf dmidecode python3-usb python3-pyudev pulseaudio jq acpica-tools acpid
-
+ 
      # Install libs for vm-manager
      sudo apt install -y libglib2.0-dev libncurses-dev libuuid1 uuid-dev libjson-c-dev
 diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
 old mode 100755
 new mode 100644
-index 7259fbe..30a16ea
+index ba55bb6..4f6a50d
 --- a/scripts/start_civ.sh
 +++ b/scripts/start_civ.sh
 @@ -25,6 +25,7 @@ GUEST_RPMB_DEV_PID=
@@ -42,13 +47,13 @@ index 7259fbe..30a16ea
  GUEST_POWER_BUTTON=
  GUEST_GRAPHIC_MODE=
 +GUEST_WMI_DEV=
-
- GUEST_STATIC_OPTION="\
-  -name caas-vm \
-@@ -153,6 +155,28 @@ function setup_swtpm() {
+ GUEST_USB_XHCI_OPT="\
+  -device qemu-xhci,id=xhci,p2=8,p3=8 \
+  -usb \
+@@ -167,6 +169,28 @@ function setup_swtpm() {
      swtpm socket --tpmstate dir=$WORK_DIR/vtpm0 --tpm2 --ctrl type=unixio,path=$WORK_DIR/vtpm0/swtpm-sock &
  }
-
+ 
 +function setup_hp_wmi_listener() {
 +    #start listening daemon for wmi
 +    local wmi_listener_daemon=$SCRIPTS_DIR/wmi-listen.sh
@@ -74,7 +79,7 @@ index 7259fbe..30a16ea
  function setup_thermal_mediation() {
      local thermal_daemon=$SCRIPTS_DIR/thermsys
      if [ -f $thermal_daemon ]; then
-@@ -683,6 +707,7 @@ function cleanup() {
+@@ -701,6 +725,7 @@ function cleanup() {
      cleanup_rpmb_dev
      cleanup_thermal_mediation
      cleanup_battery_mediation
@@ -82,18 +87,18 @@ index 7259fbe..30a16ea
      [[ -z $GUEST_USB_PT_DEV ]] || set_pt_usb unset
      [[ -z $GUEST_AUDIO_PT_DEV ]] || set_pt_audio unset
      [[ -z $GUEST_UDC_PT_DEV ]] || set_pt_udc unset
-@@ -739,6 +764,7 @@ function launch_guest() {
-               $GUEST_KIRQ_CHIP \
+@@ -758,6 +783,7 @@ function launch_guest() {
+               $GUEST_USB_XHCI_OPT \
                $GUEST_STATIC_OPTION \
                $GUEST_EXTRA_QCMD \
-+              $GUEST_WMI_DEV \
++	      $GUEST_WMI_DEV \
      "
-
+ 
      echo $EXE_CMD
-@@ -913,6 +939,10 @@ function parse_arg() {
+@@ -937,6 +963,10 @@ function parse_arg() {
                  start_thermal_daemon
                  ;;
-
+ 
 +            --hp-wmi-mediation)
 +                setup_hp_wmi_listener
 +                ;;
@@ -101,6 +106,6 @@ index 7259fbe..30a16ea
              -?*)
                  echo "Error: Invalid option $1"
                  show_help
---
-2.29.2
+-- 
+2.17.1
 
