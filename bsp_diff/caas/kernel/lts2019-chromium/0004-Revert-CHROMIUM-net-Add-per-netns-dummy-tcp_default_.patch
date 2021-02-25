@@ -1,0 +1,64 @@
+From 6c0c23be509915b06cd6207f12a939d9e0173f48 Mon Sep 17 00:00:00 2001
+From: Zhuo Peng <zhuo.peng@intel.com>
+Date: Wed, 24 Feb 2021 17:11:50 +0800
+Subject: [PATCH] Revert "CHROMIUM: net: Add per-netns dummy
+ tcp_default_init_rwnd"
+
+This reverts commit 6867335e75502aeb6ff18b5d4cee2a31d404272f.
+
+Change-Id: Iaea96a5b719456db84ae2ba29756aba1f59a16a7
+Tracked-On: OAM-96171
+Signed-off-by: Zhuo Peng <zhuo.peng@intel.com>
+---
+ include/net/netns/ipv4.h   |  1 -
+ net/ipv4/sysctl_net_ipv4.c | 15 ---------------
+ 2 files changed, 16 deletions(-)
+
+diff --git a/include/net/netns/ipv4.h b/include/net/netns/ipv4.h
+index 9b87149c4f10..c0c0791b1912 100644
+--- a/include/net/netns/ipv4.h
++++ b/include/net/netns/ipv4.h
+@@ -115,7 +115,6 @@ struct netns_ipv4 {
+ #ifdef CONFIG_NET_L3_MASTER_DEV
+ 	int sysctl_tcp_l3mdev_accept;
+ #endif
+-	int sysctl_tcp_default_init_rwnd;
+ 	int sysctl_tcp_mtu_probing;
+ 	int sysctl_tcp_mtu_probe_floor;
+ 	int sysctl_tcp_base_mss;
+diff --git a/net/ipv4/sysctl_net_ipv4.c b/net/ipv4/sysctl_net_ipv4.c
+index 3a1d8a13ac4f..c83a5d05aeaa 100644
+--- a/net/ipv4/sysctl_net_ipv4.c
++++ b/net/ipv4/sysctl_net_ipv4.c
+@@ -220,14 +220,6 @@ static int ipv4_fwd_update_priority(struct ctl_table *table, int write,
+ 	return ret;
+ }
+
+-/* The current kernel does not rely on this value so we do nothing here */
+-static int proc_tcp_default_init_rwnd(struct ctl_table *ctl, int write,
+-				      void __user *buffer,
+-				      size_t *lenp, loff_t *ppos)
+-{
+-	return proc_dointvec(ctl, write, buffer, lenp, ppos);
+-}
+-
+ static int proc_tcp_congestion_control(struct ctl_table *ctl, int write,
+ 				       void __user *buffer, size_t *lenp, loff_t *ppos)
+ {
+@@ -1323,13 +1315,6 @@ static struct ctl_table ipv4_net_table[] = {
+ 		.proc_handler	= proc_dointvec_minmax,
+ 		.extra1		= SYSCTL_ONE
+ 	},
+-	{
+-		.procname       = "tcp_default_init_rwnd",
+-		.data           = &init_net.ipv4.sysctl_tcp_default_init_rwnd,
+-		.maxlen         = sizeof(int),
+-		.mode           = 0644,
+-		.proc_handler   = proc_tcp_default_init_rwnd
+-	},
+ 	{ }
+ };
+
+--
+2.17.1
+
