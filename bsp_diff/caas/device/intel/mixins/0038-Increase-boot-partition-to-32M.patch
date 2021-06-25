@@ -1,0 +1,47 @@
+From 0d297d5ac96408c6df844927b7a3f34ec2e49876 Mon Sep 17 00:00:00 2001
+From: Swee Yee Fonn <swee.yee.fonn@intel.com>
+Date: Tue, 21 Sep 2021 15:41:19 +0800
+Subject: [PATCH] Increase boot partition to 32M
+
+Increase boot partition from 30
+to 32M to support  GUC/HUC firmware
+loading required for hw codec support
+on EHL platform
+
+Change-Id: I89d1193a02848aa5ead85f4ef33d56c74e55d1dd
+Tracked-On: OAM-97410
+Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
+---
+ groups/boot-arch/project-celadon/BoardConfig.mk | 2 +-
+ groups/boot-arch/project-celadon/gpt.ini        | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/groups/boot-arch/project-celadon/BoardConfig.mk b/groups/boot-arch/project-celadon/BoardConfig.mk
+index c99051e..5e609c6 100644
+--- a/groups/boot-arch/project-celadon/BoardConfig.mk
++++ b/groups/boot-arch/project-celadon/BoardConfig.mk
+@@ -19,7 +19,7 @@ TARGET_RECOVERY_PIXEL_FORMAT := "BGRA_8888"
+ #
+ 
+ # NOTE: These values must be kept in sync with BOARD_GPT_INI
+-BOARD_BOOTIMAGE_PARTITION_SIZE ?= 31457280
++BOARD_BOOTIMAGE_PARTITION_SIZE ?= 33554432
+ SYSTEM_PARTITION_SIZE = $(shell echo {{system_partition_size}}*1024*1024 | bc)
+ {{^dynamic-partitions}}
+ BOARD_SYSTEMIMAGE_PARTITION_SIZE ?= $(SYSTEM_PARTITION_SIZE)
+diff --git a/groups/boot-arch/project-celadon/gpt.ini b/groups/boot-arch/project-celadon/gpt.ini
+index ed95c4f..29e9bf8 100644
+--- a/groups/boot-arch/project-celadon/gpt.ini
++++ b/groups/boot-arch/project-celadon/gpt.ini
+@@ -54,7 +54,7 @@ type = fat
+ 
+ [partition.boot]
+ label = boot
+-len = 30
++len = 32
+ type = boot
+ {{#slot-ab}}
+ has_slot = true
+-- 
+2.17.1
+

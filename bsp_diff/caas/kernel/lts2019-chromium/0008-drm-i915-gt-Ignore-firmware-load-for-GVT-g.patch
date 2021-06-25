@@ -1,0 +1,35 @@
+From 0b55aac2b9b4b235c1353296b19cd62b2ddae9f0 Mon Sep 17 00:00:00 2001
+From: Swee Yee Fonn <swee.yee.fonn@intel.com>
+Date: Tue, 5 Oct 2021 17:22:24 +0800
+Subject: [PATCH] drm/i915/gt: Ignore firmware load for GVT-g
+
+Check for GVT-g vgpu and ignore firmware load
+if active
+
+Tracked-On: OAM-97410
+Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
+---
+ drivers/gpu/drm/i915/gt/uc/intel_uc_fw.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/gpu/drm/i915/gt/uc/intel_uc_fw.c b/drivers/gpu/drm/i915/gt/uc/intel_uc_fw.c
+index 537d6130b78c..ae0056db7613 100644
+--- a/drivers/gpu/drm/i915/gt/uc/intel_uc_fw.c
++++ b/drivers/gpu/drm/i915/gt/uc/intel_uc_fw.c
+@@ -294,6 +294,13 @@ int intel_uc_fw_fetch(struct intel_uc_fw *uc_fw)
+ 	__force_fw_fetch_failures(uc_fw, -EINVAL);
+ 	__force_fw_fetch_failures(uc_fw, -ESTALE);
+ 
++	/* Ignore firmware load for GVT-g */
++	if (intel_vgpu_active(i915)) {
++		dev_warn(dev, "%s firmware load ignored for GVT-g\n",
++		intel_uc_fw_type_repr(uc_fw->type));
++        goto fail;
++	}
++
+ 	err = request_firmware(&fw, uc_fw->path, dev);
+ 	if (err)
+ 		goto fail;
+-- 
+2.17.1
+

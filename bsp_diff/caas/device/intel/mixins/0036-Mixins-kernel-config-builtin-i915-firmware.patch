@@ -1,0 +1,26 @@
+From ed7472936908f26f95c99f39e6e0a7e0e052bc16 Mon Sep 17 00:00:00 2001
+From: Swee Yee Fonn <swee.yee.fonn@intel.com>
+Date: Wed, 23 Jun 2021 12:37:53 +0800
+Subject: [PATCH] Mixins: kernel config builtin i915 firmware
+
+---
+ .../kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+index 77ac3fb..49cf3fc 100644
+--- a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
++++ b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+@@ -1553,7 +1553,8 @@ CONFIG_PREVENT_FIRMWARE_BUILD=y
+ #
+ CONFIG_FW_LOADER=y
+ CONFIG_FW_LOADER_PAGED_BUF=y
+-CONFIG_EXTRA_FIRMWARE=""
++CONFIG_EXTRA_FIRMWARE="${EXTRA_FW}"
++CONFIG_EXTRA_FIRMWARE_DIR="${EXTRA_FW_DIR}"
+ CONFIG_FW_LOADER_USER_HELPER=y
+ CONFIG_FW_LOADER_USER_HELPER_FALLBACK=y
+ # CONFIG_FW_LOADER_COMPRESS is not set
+--
+2.17.1
+

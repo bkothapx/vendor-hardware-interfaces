@@ -1,0 +1,62 @@
+From 1295ecdd2ac12ab9994a99242ce7c7b53e76ecf9 Mon Sep 17 00:00:00 2001
+From: zhezhu <zhe.zhu@intel.com>
+Date: Mon, 11 May 2020 09:27:27 +0800
+Subject: [PATCH] Modify for supporting EHL platform enabling
+
+Signed-off-by: tianmi.chen <tianmi.chen@intel.com>
+---
+ omx_components/src/mfx_omx_venc_component.cpp | 5 +++--
+ omx_utils/include/mfx_omx_types.h             | 3 ++-
+ omx_utils/src/mfx_omx_dev_android.cpp         | 6 ++++++
+ 3 files changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/omx_components/src/mfx_omx_venc_component.cpp b/omx_components/src/mfx_omx_venc_component.cpp
+index 5b81eab..4e26373 100755
+--- a/omx_components/src/mfx_omx_venc_component.cpp
++++ b/omx_components/src/mfx_omx_venc_component.cpp
+@@ -229,8 +229,9 @@ OMX_ERRORTYPE MfxOmxVencComponent::Init(void)
+     }
+     if ((OMX_ErrorNone == error) && (MFX_IMPL_SOFTWARE != m_Implementation))
+     {
+-        if ((MFX_HW_BXT == m_pDevice->GetPlatformType()) &&
+-            (MFX_CODEC_AVC == m_MfxVideoParams.mfx.CodecId))
++        if (((MFX_HW_BXT == m_pDevice->GetPlatformType()) &&
++             (MFX_CODEC_AVC == m_MfxVideoParams.mfx.CodecId)) ||
++            (MFX_HW_EHL == m_pDevice->GetPlatformType()))
+             m_MfxVideoParams.mfx.LowPower = MFX_CODINGOPTION_ON;
+     }
+     if (OMX_ErrorNone == error)
+diff --git a/omx_utils/include/mfx_omx_types.h b/omx_utils/include/mfx_omx_types.h
+index 6667f5b..bf012ff 100644
+--- a/omx_utils/include/mfx_omx_types.h
++++ b/omx_utils/include/mfx_omx_types.h
+@@ -549,7 +549,8 @@ enum eMfxOmxHwType
+ {
+     MFX_HW_UNKNOWN = 0,
+     MFX_HW_BXT,
+-    MFX_HW_TGL_LP
++    MFX_HW_TGL_LP,
++    MFX_HW_EHL
+ };
+ 
+ /*------------------------------------------------------------------------------*/
+diff --git a/omx_utils/src/mfx_omx_dev_android.cpp b/omx_utils/src/mfx_omx_dev_android.cpp
+index 7de2a77..63a25c6 100644
+--- a/omx_utils/src/mfx_omx_dev_android.cpp
++++ b/omx_utils/src/mfx_omx_dev_android.cpp
+@@ -49,6 +49,12 @@ typedef struct {
+ } mfx_device_item;
+ 
+ const mfx_device_item listLegalDevIDs[] = {
++    /* EHL */
++    { 0x4500, MFX_HW_EHL},
++    { 0x4541, MFX_HW_EHL},
++    { 0x4551, MFX_HW_EHL},
++    { 0x4569, MFX_HW_EHL},
++    { 0x4571, MFX_HW_EHL},
+     /* BXT */
+     { 0x0A84, MFX_HW_BXT},
+     { 0x0A85, MFX_HW_BXT},
+-- 
+2.17.1
+
