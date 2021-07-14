@@ -1,0 +1,27 @@
+From f1e4bc513b1e1a02668021149ac11d5942f0dcba Mon Sep 17 00:00:00 2001
+From: vdanix <vishwanathx.dani@intel.com>
+Date: Wed, 14 Jul 2021 12:23:24 +0530
+Subject: [PATCH] Disable usb-gadget in mixins
+
+Tracked-On: OAM-97760
+Signed-off-by: vdanix <vishwanathx.dani@intel.com>
+---
+ caas/mixins.spec | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/caas/mixins.spec b/caas/mixins.spec
+index f011bf5..ff60d00 100755
+--- a/caas/mixins.spec
++++ b/caas/mixins.spec
+@@ -35,7 +35,7 @@ wlan: iwlwifi(libwifi-hal=true)
+ codecs: configurable(hw_ve_h265=true, hw_vd_vp9=true, hw_vd_mp2=true, hw_vd_vc1=false, platform=cml, profile_file=media_profiles_1080p.xml, gpu=gen9)
+ codec2: true
+ usb: host
+-usb-gadget: auto(usb_config=adb,mtp_adb_pid=0x0a5f,ptp_adb_pid=0x0a61,rndis_pid=0x0a62,rndis_adb_pid=0x0a63,bcdDevice=0x0,bcdUSB=0x200,controller=dwc3.2.auto,f_acm=false,f_dvc_trace=true,dvctrace_source_dev=dvcith-0-msc0)
++usb-gadget: false
+ midi: true
+ touch: cvt0f21
+ navigationbar: true
+-- 
+2.32.0
+
