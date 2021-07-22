@@ -1,0 +1,439 @@
+From 936804fd335824d492bebfb5b164b5f047b148c0 Mon Sep 17 00:00:00 2001
+From: Kishan Mochi <kishan.mochi@intel.com>
+Date: Sun, 11 Jul 2021 19:31:29 +0530
+Subject: [PATCH] Add media codec files for EHL
+
+add media_codecs_gen11.xml and media_codecs_performance_ehl.xml
+to vendor/etc/
+
+Change-Id: I0cf0fa05569da08f40727c0370fc21e7aec16eda
+Tracked-On: OAM-97736
+Signed-off-by: Kishan Mochi <kishan.mochi@intel.com>
+
+diff --git a/groups/codecs/configurable/auto_hal.in b/groups/codecs/configurable/auto_hal.in
+index eab9dfb..82ccfc3 100644
+--- a/groups/codecs/configurable/auto_hal.in
++++ b/groups/codecs/configurable/auto_hal.in
+@@ -6,6 +6,9 @@ value_model=`grep -i model /proc/cpuinfo | cut -d ':' -f2 | head -n 1`
+ if [ $value_model == 166 ]; then
+     setprop ro.vendor.media.target_variant "_gen9"
+     setprop ro.vendor.media.target_variant_platform "_cml"
++elif [ $value_model == 150 ]; then
++    setprop ro.vendor.media.target_variant "_gen11"
++    setprop ro.vendor.media.target_variant_platform "_ehl"
+ elif [ $value_model == 141 ]; then
+     setprop ro.vendor.media.target_variant "_gen12"
+     setprop ro.vendor.media.target_variant_platform "_tgl"
+diff --git a/groups/codecs/configurable/files.spec b/groups/codecs/configurable/files.spec
+index adbdd96..c4d0097 100644
+--- a/groups/codecs/configurable/files.spec
++++ b/groups/codecs/configurable/files.spec
+@@ -1,12 +1,14 @@
+ [extrafiles]
+ media_codecs_{{gpu}}.xml: "Specific configuration for audio and video codecs"
+ media_codecs_gen9.xml: "Specific configuration for audio and video codecs for gen9"
++media_codecs_gen11.xml: "Specific configuration for audio and video codecs for gen11"
+ media_codecs_gen12.xml: "Specific configuration for audio and video codecs for gen12"
+ mfx_omxil_core.conf: "MSDK configuration for video codecs"
+ media_profiles.xml: "Media profile file"
+ media_profiles_1080p.xml: "Media profile file with 1080p support"
+ media_codecs_performance_{{platform}}.xml: "Media codecs performance file"
+ media_codecs_performance_cml.xml: "Media codecs performance file for cml"
++media_codecs_performance_ehl.xml: "Media codecs performance file for ehl"
+ media_codecs_performance_tgl.xml: "Media codecs performance file for tgl"
+ media_codecs_performance_{{platform}}_xen.xml: "Media codecs performance file for xen"
+ media_codecs_vp9.xml: "vp9 support"
+diff --git a/groups/codecs/configurable/media_codecs_gen11.xml b/groups/codecs/configurable/media_codecs_gen11.xml
+new file mode 100644
+index 0000000..255e663
+--- /dev/null
++++ b/groups/codecs/configurable/media_codecs_gen11.xml
+@@ -0,0 +1,239 @@
++<!-- Copyright (C) 2012 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++
++<!--
++<!DOCTYPE MediaCodecs [
++<!ELEMENT MediaCodecs (Decoders,Encoders)>
++<!ELEMENT Decoders (MediaCodec*)>
++<!ELEMENT Encoders (MediaCodec*)>
++<!ELEMENT MediaCodec (Type*,Quirk*)>
++<!ATTLIST MediaCodec name CDATA #REQUIRED>
++<!ATTLIST MediaCodec type CDATA>
++<!ELEMENT Type EMPTY>
++<!ATTLIST Type name CDATA #REQUIRED>
++<!ELEMENT Quirk EMPTY>
++<!ATTLIST Quirk name CDATA #REQUIRED>
++]>
++
++There's a simple and a complex syntax to declare the availability of a
++media codec:
++
++A codec that properly follows the OpenMax spec and therefore doesn't have any
++quirks and that only supports a single content type can be declared like so:
++
++    <MediaCodec name="OMX.foo.bar" type="something/interesting" />
++
++If a codec has quirks OR supports multiple content types, the following syntax
++can be used:
++
++    <MediaCodec name="OMX.foo.bar" >
++        <Type name="something/interesting" />
++        <Type name="something/else" />
++        ...
++        <Quirk name="requires-allocate-on-input-ports" />
++        <Quirk name="requires-allocate-on-output-ports" />
++        <Quirk name="output-buffers-are-unreadable" />
++    </MediaCodec>
++
++Only the three quirks included above are recognized at this point:
++
++"requires-allocate-on-input-ports"
++    must be advertised if the component does not properly support specification
++    of input buffers using the OMX_UseBuffer(...) API but instead requires
++    OMX_AllocateBuffer to be used.
++
++"requires-allocate-on-output-ports"
++    must be advertised if the component does not properly support specification
++    of output buffers using the OMX_UseBuffer(...) API but instead requires
++    OMX_AllocateBuffer to be used.
++
++"output-buffers-are-unreadable"
++    must be advertised if the emitted output buffers of a decoder component
++    are not readable, i.e. use a custom format even though abusing one of
++    the official OMX colorspace constants.
++    Clients of such decoders will not be able to access the decoded data,
++    naturally making the component much less useful. The only use for
++    a component with this quirk is to render the output to the screen.
++    Audio decoders MUST NOT advertise this quirk.
++    Video decoders that advertise this quirk must be accompanied by a
++    corresponding color space converter for thumbnail extraction,
++    matching surfaceflinger support that can render the custom format to
++    a texture and possibly other code, so just DON'T USE THIS QUIRK.
++
++-->
++
++<MediaCodecs>
++    <Decoders>
++{{#hw_vd_vc1}}
++        <MediaCodec name="OMX.Intel.hw_vd.vc1" type="video/x-ms-wmv" >
++            <!-- profiles and levels:  ProfileBaseline : Level51 -->
++            <Limit name="size" min="64x64" max="3840x2160" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++{{/hw_vd_vc1}}
++
++{{#sw_vd_h264}}
++        <MediaCodec name="OMX.Intel.sw_vd.h264" type="video/avc" >
++            <!-- profiles and levels:  ProfileBaseline : Level51 -->
++            <Limit name="size" min="64x64" max="1920x1080" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-1920x1080" value="30" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++{{/sw_vd_h264}}
++
++{{#hw_vd_h264}}
++        <MediaCodec name="OMX.Intel.hw_vd.h264" type="video/avc" >
++            <!-- profiles and levels:  ProfileBaseline : Level51 -->
++            <Limit name="size" min="64x64" max="3840x2160" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++{{/hw_vd_h264}}
++
++{{#hw_vd_h264_secure}}
++        <MediaCodec name="OMX.Intel.hw_vd.h264.secure" type="video/avc">
++            <!-- profiles and levels:  ProfileBaseline : Level51 -->
++            <Limit name="size" min="64x64" max="3840x2160" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++            <Feature name="adaptive-playback" />
++            <Feature name="secure-playback" required="true" />
++        </MediaCodec>
++{{/hw_vd_h264_secure}}
++
++{{#hw_vd_vp8}}
++        <MediaCodec name="OMX.Intel.hw_vd.vp8" type="video/x-vnd.on2.vp8" >
++            <Limit name="size" min="64x64" max="3840x2160" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++{{/hw_vd_vp8}}
++
++{{#hw_vd_vp9}}
++        <MediaCodec name="OMX.Intel.hw_vd.vp9" type="video/x-vnd.on2.vp9" >
++            <Limit name="size" min="64x64" max="8192x8192" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++{{/hw_vd_vp9}}
++
++{{#hw_vd_h265}}
++        <MediaCodec name="OMX.Intel.hw_vd.h265" type="video/hevc" >
++            <Limit name="size" min="64x64" max="8192x8192" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++{{/hw_vd_h265}}
++
++{{#hw_vd_h265_secure}}
++        <MediaCodec name="OMX.Intel.hw_vd.h265.secure" type="video/hevc" >
++           <Limit name="size" min="64x64" max="8192x8192" />
++           <Limit name="alignment" value="2x2" />
++           <Limit name="block-size" value="16x16" />
++           <Limit name="blocks-per-second" range="1-972000" />
++           <Limit name="bitrate" range="1-40000000" />
++           <Limit name="performance-point-3840x2160" value="30" />
++           <Feature name="adaptive-playback" />
++           <Feature name="secure-playback" required="true" />
++        </MediaCodec>
++{{/hw_vd_h265_secure}}
++
++{{#hw_vd_mp2}}
++        <MediaCodec name="OMX.Intel.hw_vd.mp2" type="video/mpeg2" >
++            <Limit name="size" min="64x64" max="3840x2160" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++{{/hw_vd_mp2}}
++    </Decoders>
++
++    <Encoders>
++{{#hw_ve_h264}}
++        <MediaCodec name="OMX.Intel.hw_ve.h264" type="video/avc" >
++            <Limit name="size" min="176x144" max="3840x2160" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++        </MediaCodec>
++{{/hw_ve_h264}}
++{{#hw_ve_vp8}}
++        <MediaCodec name="OMX.Intel.hw_ve.vp8" type="video/x-vnd.on2.vp8" >
++            <Limit name="size" min="176x144" max="3840x2160" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++        </MediaCodec>
++{{/hw_ve_vp8}}
++{{#hw_ve_vp9}}
++        <MediaCodec name="OMX.Intel.hw_ve.vp9" type="video/x-vnd.on2.vp9" >
++            <Limit name="size" min="176x144" max="8192x8192" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++        </MediaCodec>
++{{/hw_ve_vp9}}
++{{#hw_ve_h265}}
++        <MediaCodec name="OMX.Intel.hw_ve.h265" type="video/hevc" >
++            <Limit name="size" min="64x64" max="8192x8192" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="blocks-per-second" range="1-972000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Limit name="performance-point-3840x2160" value="30" />
++        </MediaCodec>
++{{/hw_ve_h265}}
++    </Encoders>
++    <Include href="media_codecs_google_audio.xml" />
++    <Settings>
++        <Setting name="max-video-encoder-input-buffers" value="9" />
++    </Settings>
++</MediaCodecs>
+diff --git a/groups/codecs/configurable/media_codecs_performance_ehl.xml b/groups/codecs/configurable/media_codecs_performance_ehl.xml
+new file mode 100644
+index 0000000..2b1932f
+--- /dev/null
++++ b/groups/codecs/configurable/media_codecs_performance_ehl.xml
+@@ -0,0 +1,120 @@
++<?xml version="1.0" encoding="utf-8" ?>
++<!-- Copyright 2015 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++
++<MediaCodecs>
++    <Decoders>
++        <MediaCodec name="c2.android.h263.decoder" type="video/3gpp" update="true">
++            <Limit name="measured-frame-rate-176x144" range="171-261" />
++            <Limit name="measured-frame-rate-352x288" range="154-232" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.avc.decoder" type="video/avc" update="true">
++            <Limit name="measured-frame-rate-320x240" range="134-203" />
++            <Limit name="measured-frame-rate-720x480" range="170-190" />
++            <Limit name="measured-frame-rate-1280x720" range="50-58" />
++            <Limit name="measured-frame-rate-1920x1080" range="20-32" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.hevc.decoder" type="video/hevc" update="true">
++            <Limit name="measured-frame-rate-352x288" range="134-203" />
++            <Limit name="measured-frame-rate-640x360" range="98-152" />
++            <Limit name="measured-frame-rate-720x480" range="170-190" />
++            <Limit name="measured-frame-rate-1280x720" range="70-120" />
++            <Limit name="measured-frame-rate-1920x1080" range="40-70" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.mpeg4.decoder" type="video/mp4v-es" update="true">
++            <Limit name="measured-frame-rate-176x144" range="164-271" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.vp8.decoder" type="video/x-vnd.on2.vp8" update="true">
++            <Limit name="measured-frame-rate-320x180" range="150-229" />
++            <Limit name="measured-frame-rate-640x360" range="290-320" />
++            <Limit name="measured-frame-rate-1280x720" range="65-70" />
++            <Limit name="measured-frame-rate-1920x1080" range="25-30" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.vp9.decoder" type="video/x-vnd.on2.vp9" update="true">
++            <Limit name="measured-frame-rate-320x180" range="136-200" />
++            <Limit name="measured-frame-rate-640x360" range="220-330" />
++            <Limit name="measured-frame-rate-1280x720" range="80-170" />
++            <Limit name="measured-frame-rate-1920x1080" range="50-100" />
++        </MediaCodec>
++        <MediaCodec name="OMX.Intel.hw_vd.h264" type="video/avc" update="true">
++            <Limit name="measured-frame-rate-320x240" range="1500-2000" />
++            <Limit name="measured-frame-rate-720x480" range="1000-2000" />
++            <Limit name="measured-frame-rate-1280x720" range="460-900" />
++            <Limit name="measured-frame-rate-1920x1088" range="320-390" />
++        </MediaCodec>
++        <MediaCodec name="OMX.Intel.hw_vd.h265" type="video/hevc" update="true">
++            <Limit name="measured-frame-rate-352x288" range="1200-1250" />
++            <Limit name="measured-frame-rate-640x360" range="1000-1400" />
++            <Limit name="measured-frame-rate-720x480" range="820-1020" />
++            <Limit name="measured-frame-rate-1280x720" range="540-580" />
++            <Limit name="measured-frame-rate-1920x1080" range="430-470" />
++            <Limit name="measured-frame-rate-3840x2160" range="120-130" />
++        </MediaCodec>
++        <MediaCodec name="OMX.Intel.hw_vd.vp8" type="video/x-vnd.on2.vp8" update="true">
++            <Limit name="measured-frame-rate-320x180" range="700-1450" />
++            <Limit name="measured-frame-rate-640x360" range="400-950" />
++            <Limit name="measured-frame-rate-1280x720" range="150-600" />
++            <Limit name="measured-frame-rate-1920x1080" range="100-330" />
++        </MediaCodec>
++        <MediaCodec name="OMX.Intel.hw_vd.vp9" type="video/x-vnd.on2.vp9" update="true">
++            <Limit name="measured-frame-rate-320x180" range="1300-1800" />
++            <Limit name="measured-frame-rate-640x360" range="500-1300" />
++            <Limit name="measured-frame-rate-1280x720" range="560-590" />
++            <Limit name="measured-frame-rate-1920x1080" range="350-420" />
++            <Limit name="measured-frame-rate-3840x2160" range="100-130" />
++        </MediaCodec>
++    </Decoders>
++    <Encoders>
++        <MediaCodec name="c2.android.avc.encoder" type="video/avc" update="true">
++            <Limit name="measured-frame-rate-320x240" range="97-143" />
++            <Limit name="measured-frame-rate-720x480" range="150-170" />
++            <Limit name="measured-frame-rate-1280x720" range="65-75" />
++            <Limit name="measured-frame-rate-1920x1080" range="30-35" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.hevc.encoder" type="video/hevc" update="true">
++            <Limit name="measured-frame-rate-320x240" range="25-55" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.h263.encoder" type="video/3gpp" update="true">
++            <Limit name="measured-frame-rate-176x144" range="137-214" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.mpeg4.encoder" type="video/mp4v-es" update="true">
++            <Limit name="measured-frame-rate-176x144" range="143-215" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.vp8.encoder" type="video/x-vnd.on2.vp8" update="true">
++            <Limit name="measured-frame-rate-320x180" range="150-300" />
++            <Limit name="measured-frame-rate-640x360" range="95-150" />
++            <Limit name="measured-frame-rate-1280x720" range="32-38" />
++            <Limit name="measured-frame-rate-1920x1080" range="22-25" />
++        </MediaCodec>
++        <MediaCodec name="c2.android.vp9.encoder" type="video/x-vnd.on2.vp9" update="true">
++            <Limit name="measured-frame-rate-320x180" range="96-106" />
++            <Limit name="measured-frame-rate-640x360" range="39-39" />
++            <Limit name="measured-frame-rate-1280x720" range="7-9" />
++        </MediaCodec>
++        <MediaCodec name="OMX.Intel.hw_ve.h264" type="video/avc" update="true">
++            <Limit name="measured-frame-rate-320x240" range="260-500" />
++            <Limit name="measured-frame-rate-720x480" range="140-160" />
++            <Limit name="measured-frame-rate-1280x720" range="75-110" />
++            <Limit name="measured-frame-rate-1920x1080" range="50-55" />
++        </MediaCodec>
++        <MediaCodec name="OMX.Intel.hw_ve.h265" type="video/hevc" update="true">
++            <Limit name="measured-frame-rate-320x240" range="200-400" />
++            <Limit name="measured-frame-rate-720x480" range="120-160" />
++            <Limit name="measured-frame-rate-1280x720" range="70-90" />
++            <Limit name="measured-frame-rate-1920x1080" range="35-45" />
++            <Limit name="measured-frame-rate-3840x2160" range="10-14" />
++        </MediaCodec>
++    </Encoders>
++</MediaCodecs>
+diff --git a/groups/codecs/configurable/product.mk b/groups/codecs/configurable/product.mk
+index 12ba194..c6181f4 100644
+--- a/groups/codecs/configurable/product.mk
++++ b/groups/codecs/configurable/product.mk
+@@ -11,6 +11,7 @@ else
+ PRODUCT_COPY_FILES += \
+     $(LOCAL_PATH)/{{_extra_dir}}/media_codecs_{{gpu}}.xml:vendor/etc/media_codecs.xml \
+     $(LOCAL_PATH)/{{_extra_dir}}/media_codecs_gen9.xml:vendor/etc/media_codecs_gen9.xml \
++    $(LOCAL_PATH)/{{_extra_dir}}/media_codecs_gen11.xml:vendor/etc/media_codecs_gen11.xml \
+     $(LOCAL_PATH)/{{_extra_dir}}/media_codecs_gen12.xml:vendor/etc/media_codecs_gen12.xml \
+     $(LOCAL_PATH)/{{_extra_dir}}/mfx_omxil_core.conf:vendor/etc/mfx_omxil_core.conf
+ endif
+@@ -19,6 +20,7 @@ endif
+ PRODUCT_COPY_FILES += \
+     $(LOCAL_PATH)/{{_extra_dir}}/media_codecs_performance_{{platform}}.xml:vendor/etc/media_codecs_performance.xml \
+     $(LOCAL_PATH)/{{_extra_dir}}/media_codecs_performance_cml.xml:vendor/etc/media_codecs_performance_cml.xml \
++    $(LOCAL_PATH)/{{_extra_dir}}/media_codecs_performance_ehl.xml:vendor/etc/media_codecs_performance_ehl.xml \
+     $(LOCAL_PATH)/{{_extra_dir}}/media_codecs_performance_tgl.xml:vendor/etc/media_codecs_performance_tgl.xml
+ {{/codec_perf_xen}}
+ {{#codec_perf_xen}}
+--
+2.32.0
+
