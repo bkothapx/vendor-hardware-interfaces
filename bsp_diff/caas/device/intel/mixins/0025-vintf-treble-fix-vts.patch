@@ -22,58 +22,6 @@ index 18d3ef8..99c17e7 100644
 +    <unavailable-feature name="android.hardware.nfc" />
 +    <unavailable-feature name="android.software.leanback" />
  </permissions>
-diff --git a/groups/device-specific/caas/manifest.xml b/groups/device-specific/caas/manifest.xml
-index 5b438f6..df0a674 100644
---- a/groups/device-specific/caas/manifest.xml
-+++ b/groups/device-specific/caas/manifest.xml
-@@ -4,15 +4,6 @@
- {{#ota-update}}
- <manifest version="1.0" type="device">
- {{/ota-update}}
--    <hal format="hidl">
--        <name>android.hardware.automotive.audiocontrol</name>
--        <transport>hwbinder</transport>
--        <version>1.0</version>
--        <interface>
--            <name>IAudioControl</name>
--            <instance>default</instance>
--        </interface>
--    </hal>
-     <hal format="hidl">
-         <name>android.hardware.keymaster</name>
-         <transport>hwbinder</transport>
-@@ -96,15 +87,6 @@
-             <instance>default</instance>
-         </interface>
-     </hal>
--    <hal format="hidl">
--        <name>android.hardware.broadcastradio</name>
--        <transport>hwbinder</transport>
--        <version>1.1</version>
--        <interface>
--            <name>IBroadcastRadioFactory</name>
--            <instance>default</instance>
--        </interface>
--    </hal>
-     <hal format="hidl">
-         <name>android.hardware.graphics.mapper</name>
-         <transport arch="32+64">passthrough</transport>
-@@ -133,15 +115,6 @@
-             <instance>default</instance>
-         </interface>
-     </hal>
--    <hal format="hidl">
--        <name>android.hardware.automotive.vehicle</name>
--        <transport>hwbinder</transport>
--        <version>2.0</version>
--        <interface>
--            <name>IVehicle</name>
--            <instance>default</instance>
--        </interface>
--    </hal>
-     <hal format="hidl">
-         <name>android.hardware.bluetooth</name>
-         <transport>hwbinder</transport>
 --
 2.28.0
 
