@@ -1,4 +1,4 @@
-From 1262fc53d604822ba7299446812b6639ef458ff8 Mon Sep 17 00:00:00 2001
+From 34693aebb770672b4cf97b27925449955f7e5839 Mon Sep 17 00:00:00 2001
 From: Zhuo Peng <zhuo.peng@intel.com>
 Date: Tue, 19 Jan 2021 17:10:23 +0800
 Subject: [PATCH] Add '--external-wakeup-mode' option to use host rtc
@@ -11,18 +11,18 @@ Signed-off-by: Zhuo Peng <zhuo.peng@intel.com>
  1 file changed, 10 insertions(+)
 
 diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
-index 4526a1f..50f8e89 100755
+index 03e77ac..59f8ef5 100755
 --- a/scripts/start_civ.sh
 +++ b/scripts/start_civ.sh
-@@ -58,6 +58,7 @@ GUEST_AAF_CONFIG=$GUEST_AAF_DIR/mixins.spec
- GUEST_POWER_BUTTON=
- GUEST_GRAPHIC_MODE=
- GUEST_WMI_DEV=
+@@ -16,6 +16,7 @@ EMULATOR_PATH=$(which qemu-system-x86_64)
+ GUEST_MEM="-m 2G"
+ GUEST_CPU_NUM="-smp 1"
+ GUEST_DISK="-drive file=$WORK_DIR/android.qcow2,if=none,id=disk1,discard=unmap,detect-zeroes=unmap"
 +GUEST_EXTERNAL_WAKEUP=
- GUEST_USB_XHCI_OPT="\
-  -device qemu-xhci,id=xhci,p2=8,p3=8 \
-  -usb \
-@@ -769,6 +770,10 @@ function set_guest_pwr_vol_button() {
+ GUEST_FIRMWARE="-drive file=$WORK_DIR/OVMF.fd,format=raw,if=pflash"
+ GUEST_DISP_TYPE="-display gtk,gl=on"
+ GUEST_KIRQ_CHIP="-machine kernel_irqchip=on"
+@@ -600,6 +601,10 @@ function set_guest_pwr_vol_button() {
      cd -
  }
  
@@ -33,15 +33,15 @@ index 4526a1f..50f8e89 100755
  function cleanup() {
      cleanup_rpmb_dev
      cleanup_thermal_mediation
-@@ -813,6 +818,7 @@ function launch_guest() {
-               $GUEST_UDC_PT_DEV \
-               $GUEST_AUDIO_PT_DEV \
-               $GUEST_ETH_PT_DEV \
-+              $GUEST_EXTERNAL_WAKEUP \
+@@ -645,6 +650,7 @@ function launch_guest() {
                $GUEST_WIFI_PT_DEV \
-               $GUEST_ACPI_SSDT \
-               $GUEST_I2C_PT_DEV \
-@@ -993,6 +999,10 @@ function parse_arg() {
+               $GUEST_PM_CTRL \
+               $GUEST_TIME_KEEP \
++              $GUEST_EXTERNAL_WAKEUP \
+               $GUEST_QMP_PIPE \
+               $GUEST_POWER_BUTTON \
+               $GUSET_VTPM \
+@@ -793,6 +799,10 @@ function parse_arg() {
                  set_guest_time_keep
                  ;;
  

@@ -1,4 +1,4 @@
-From 4c09a8afd2778a70ca84d8f5be5fa23ca4ddc164 Mon Sep 17 00:00:00 2001
+From da5a7238f3fe827873024c4ada5d0224b46ef80c Mon Sep 17 00:00:00 2001
 From: Xiao He <xiao.he@intel.com>
 Date: Mon, 12 Oct 2020 19:54:49 +0800
 Subject: [PATCH] SDE/FRP: mixins: add secure_erase_daemon
@@ -6,12 +6,19 @@ Subject: [PATCH] SDE/FRP: mixins: add secure_erase_daemon
 Change-Id: I41536ff1cefaa1275debcfb0dbc5b8c0103914f9
 Tracked-On: OAM-92884
 Signed-off-by: Xiao He <xiao.he@intel.com>
+---
+ groups/device-specific/caas/BoardConfig.mk      |   1 +
+ groups/device-specific/caas/files.spec          |   1 +
+ groups/device-specific/caas/product.mk          |   1 +
+ groups/device-specific/caas/secure_erase_daemon | Bin 0 -> 13216 bytes
+ 4 files changed, 3 insertions(+)
+ create mode 100755 groups/device-specific/caas/secure_erase_daemon
 
 diff --git a/groups/device-specific/caas/BoardConfig.mk b/groups/device-specific/caas/BoardConfig.mk
-index 104e75b..a542692 100644
+index fae31d0..d139fff 100644
 --- a/groups/device-specific/caas/BoardConfig.mk
 +++ b/groups/device-specific/caas/BoardConfig.mk
-@@ -29,6 +29,7 @@ BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/guest_pm_control
+@@ -23,6 +23,7 @@ BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/guest_pm_control
  BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/intel-thermal-conf.xml
  BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/thermald.service
  BOARD_FLASHFILES += $(PRODUCT_OUT)/scripts/rpmb_dev
@@ -20,29 +27,23 @@ index 104e75b..a542692 100644
  # for USB OTG WA
  BOARD_SEPOLICY_DIRS += $(INTEL_PATH_SEPOLICY)/bxt_usb
 diff --git a/groups/device-specific/caas/files.spec b/groups/device-specific/caas/files.spec
-index 4dc05ba..6ef58ff 100644
+index 3a12411..e1f6ef5 100644
 --- a/groups/device-specific/caas/files.spec
 +++ b/groups/device-specific/caas/files.spec
-@@ -19,6 +19,7 @@ sof_audio: "script for sof audio"
- skucfg: "SKU-specific configurations for QEMU"
- prebuilt: "prebuilt binary executables"
- wmi-listen.sh: "script for acpi event listener"
+@@ -25,3 +25,4 @@ qmp_events_handler.sh: "Event handler"
+ setup_audio_host.sh: "scripts for host audio"
+ wakeup.py: "guest wakeup from vinput-manager"
+ rpmb_dev: "rpmb simulation application"
 +secure_erase_daemon: "host partition secure erase application"
- auto_switch_pt_usb_vms.sh:"script for switching usb_vms"
- guest_pm_control:" Guest PM control"
- findall.py: "Find script"
 diff --git a/groups/device-specific/caas/product.mk b/groups/device-specific/caas/product.mk
-index 8c7f1f3..a3d83d9 100755
+index 3a3ed7a..b2ba60a 100755
 --- a/groups/device-specific/caas/product.mk
 +++ b/groups/device-specific/caas/product.mk
-@@ -51,6 +51,7 @@ PRODUCT_COPY_FILES += $(LOCAL_PATH)/skucfg/tasmania/virtio_i2c.map:$(PRODUCT_OUT
- PRODUCT_COPY_FILES += $(LOCAL_PATH)/prebuilt/guest_rtc_monitor:$(PRODUCT_OUT)/scripts/guest_rtc_monitor
- PRODUCT_COPY_FILES += $(LOCAL_PATH)/prebuilt/wmi-qmp:$(PRODUCT_OUT)/scripts/wmi-qmp
- PRODUCT_COPY_FILES += $(LOCAL_PATH)/wmi-listen.sh:$(PRODUCT_OUT)/scripts/wmi-listen.sh
+@@ -59,3 +59,4 @@ PRODUCT_COPY_FILES += device/intel/civ/host/vm-manager/scripts/guest_time_keepin
+ PRODUCT_COPY_FILES += device/intel/civ/host/vm-manager/scripts/start_flash_usb.sh:$(PRODUCT_OUT)/scripts/start_flash_usb.sh
+ PRODUCT_COPY_FILES += vendor/intel/fw/trusty-release-binaries/rpmb_dev:$(PRODUCT_OUT)/scripts/rpmb_dev
+ PRODUCT_COPY_FILES += $(LOCAL_PATH)/wakeup.py:$(PRODUCT_OUT)/scripts/wakeup.py
 +PRODUCT_COPY_FILES += $(LOCAL_PATH)/secure_erase_daemon:$(PRODUCT_OUT)/scripts/secure_erase_daemon
- PRODUCT_COPY_FILES += device/intel/civ/host/vm-manager/scripts/start_civ.sh:$(PRODUCT_OUT)/scripts/start_civ.sh
- PRODUCT_COPY_FILES += device/intel/civ/host/vm-manager/scripts/setup_host.sh:$(PRODUCT_OUT)/scripts/setup_host.sh
- PRODUCT_COPY_FILES += device/intel/civ/host/vm-manager/scripts/guest_time_keeping.sh:$(PRODUCT_OUT)/scripts/guest_time_keeping.sh
 diff --git a/groups/device-specific/caas/secure_erase_daemon b/groups/device-specific/caas/secure_erase_daemon
 new file mode 100755
 index 0000000000000000000000000000000000000000..2c75e4227661ad98a8d6d125fcbbcec061903202
