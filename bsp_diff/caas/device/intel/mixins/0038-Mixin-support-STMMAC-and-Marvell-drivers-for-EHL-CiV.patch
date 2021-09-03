@@ -1,0 +1,53 @@
+From 56646ef1e6192a227fb44dd6b3aef3119ce63423 Mon Sep 17 00:00:00 2001
+From: Zhuo Peng <zhuo.peng@intel.com>
+Date: Fri, 25 Jun 2021 11:29:02 +0800
+Subject: [PATCH] Mixin support STMMAC and Marvell drivers for EHL CiV
+
+Tracked-On: OAM-99178
+Signed-off-by: Zhuo Peng <zhuo.peng@intel.com>
+Change-Id: Id233583708701e97fee190dfd4668bff900314ca
+---
+ groups/ethernet/dhcp/init.rc                                | 5 +++++
+ .../gmin64/config-lts/lts2019-chromium/x86_64_defconfig     | 6 +++---
+ 2 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/groups/ethernet/dhcp/init.rc b/groups/ethernet/dhcp/init.rc
+index d6a98e8..58179b0 100644
+--- a/groups/ethernet/dhcp/init.rc
++++ b/groups/ethernet/dhcp/init.rc
+@@ -16,3 +16,8 @@ on post-fs
+     insmod /vendor/lib/modules/pps_core.ko
+     insmod /vendor/lib/modules/ptp.ko
+     insmod /vendor/lib/modules/e1000e.ko
++    insmod /vendor/lib/modules/marvell.ko
++    insmod /vendor/lib/modules/phylink.ko
++    insmod /vendor/lib/modules/stmmac.ko
++    insmod /vendor/lib/modules/stmmac-pci.ko
++
+diff --git a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+index 34ec94a..65ef633 100644
+--- a/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
++++ b/groups/kernel/gmin64/config-lts/lts2019-chromium/x86_64_defconfig
+@@ -2161,7 +2161,7 @@ CONFIG_STMMAC_ETH=m
+ # CONFIG_STMMAC_SELFTESTS is not set
+ CONFIG_STMMAC_PLATFORM=m
+ CONFIG_DWMAC_GENERIC=m
+-# CONFIG_STMMAC_PCI is not set
++CONFIG_STMMAC_PCI=m
+ # CONFIG_NET_VENDOR_SUN is not set
+ CONFIG_NET_VENDOR_SYNOPSYS=y
+ # CONFIG_DWC_XLGMAC is not set
+@@ -2211,8 +2211,8 @@ CONFIG_SWPHY=y
+ # CONFIG_INTEL_XWAY_PHY is not set
+ # CONFIG_LSI_ET1011C_PHY is not set
+ # CONFIG_LXT_PHY is not set
+-# CONFIG_MARVELL_PHY is not set
+-# CONFIG_MARVELL_10G_PHY is not set
++CONFIG_MARVELL_PHY=m
++CONFIG_MARVELL_10G_PHY=m
+ # CONFIG_MICREL_PHY is not set
+ # CONFIG_MICROCHIP_PHY is not set
+ # CONFIG_MICROCHIP_T1_PHY is not set
+--
+2.17.1
+

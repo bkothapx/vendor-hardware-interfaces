@@ -1,0 +1,31 @@
+From d59b82dbe95c703c98402f525b865a9304dcf759 Mon Sep 17 00:00:00 2001
+From: Zhuo Peng <zhuo.peng@intel.com>
+Date: Fri, 3 Sep 2021 14:28:41 +0800
+Subject: [PATCH 4/4] Modify GbE LED behaviors
+
+LED0: On-Link, Off-No Link
+LED1: Blink-Activity, Off-No Activity
+
+Tracked-On: OAM-99178
+Signed-off-by: Zhuo Peng <zhuo.peng@intel.com>
+Change-Id: Ia8f5a743653dc0875a62bbba674b3c3672ff0f0a
+---
+ drivers/net/phy/marvell.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/phy/marvell.c b/drivers/net/phy/marvell.c
+index 9dbe625ad447..60a78af35bad 100644
+--- a/drivers/net/phy/marvell.c
++++ b/drivers/net/phy/marvell.c
+@@ -136,7 +136,7 @@
+
+ #define MII_PHY_LED_CTRL	        16
+ #define MII_88E1121_PHY_LED_DEF		0x0030
+-#define MII_88E1510_PHY_LED_DEF		0x1177
++#define MII_88E1510_PHY_LED_DEF		0x0040
+ #define MII_88E1510_PHY_LED0_LINK_LED1_ACTIVE	0x1040
+
+ #define MII_M1011_PHY_STATUS		0x11
+--
+2.17.1
+
