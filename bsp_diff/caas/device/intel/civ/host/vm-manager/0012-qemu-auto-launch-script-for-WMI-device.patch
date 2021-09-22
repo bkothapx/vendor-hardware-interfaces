@@ -1,4 +1,4 @@
-From 6f28d75d67922cde1a6c78fe7a4b62b2ea7d1f15 Mon Sep 17 00:00:00 2001
+From 5875b7afc553aad36ad89e906383db0b794c709c Mon Sep 17 00:00:00 2001
 From: Yan Zhao <yan.y.zhao@intel.com>
 Date: Fri, 18 Sep 2020 20:41:31 +0800
 Subject: [PATCH] qemu auto launch script for WMI device
@@ -16,7 +16,7 @@ Signed-off-by: Swee Yee Fonn <swee.yee.fonn@intel.com>
  mode change 100755 => 100644 scripts/start_civ.sh
 
 diff --git a/scripts/setup_host.sh b/scripts/setup_host.sh
-index 3b3eaed..1962467 100755
+index 43e38ee..893b6ec 100755
 --- a/scripts/setup_host.sh
 +++ b/scripts/setup_host.sh
 @@ -28,7 +28,7 @@ function ubu_changes_require(){
@@ -31,7 +31,7 @@ index 3b3eaed..1962467 100755
 diff --git a/scripts/start_civ.sh b/scripts/start_civ.sh
 old mode 100755
 new mode 100644
-index 6fad8ce..f102b63
+index faf0b05..94f32a5
 --- a/scripts/start_civ.sh
 +++ b/scripts/start_civ.sh
 @@ -25,6 +25,7 @@ GUEST_RPMB_DEV_PID=
@@ -50,7 +50,7 @@ index 6fad8ce..f102b63
  GUEST_USB_XHCI_OPT="\
   -device qemu-xhci,id=xhci,p2=8,p3=8 \
   -usb \
-@@ -177,6 +179,28 @@ function setup_swtpm() {
+@@ -178,6 +180,28 @@ function setup_swtpm() {
      swtpm socket --tpmstate dir=$WORK_DIR/vtpm0 --tpm2 --ctrl type=unixio,path=$WORK_DIR/vtpm0/swtpm-sock &
  }
  
@@ -79,7 +79,7 @@ index 6fad8ce..f102b63
  function setup_thermal_mediation() {
      local thermal_daemon=$SCRIPTS_DIR/thermsys
      if [ -f $thermal_daemon ]; then
-@@ -708,6 +732,7 @@ function cleanup() {
+@@ -725,6 +749,7 @@ function cleanup() {
      cleanup_rpmb_dev
      cleanup_thermal_mediation
      cleanup_battery_mediation
@@ -87,25 +87,25 @@ index 6fad8ce..f102b63
      cleanup_pt_pci
  }
  
-@@ -761,6 +786,7 @@ function launch_guest() {
+@@ -778,6 +803,7 @@ function launch_guest() {
                $GUEST_USB_XHCI_OPT \
                $GUEST_STATIC_OPTION \
                $GUEST_EXTRA_QCMD \
-+	      $GUEST_WMI_DEV \
++              $GUEST_WMI_DEV \
+               $GUEST_PARTITION \
      "
  
-     echo $EXE_CMD
-@@ -940,6 +966,10 @@ function parse_arg() {
-                 start_thermal_daemon
+@@ -954,6 +980,10 @@ function parse_arg() {
+                 set_guest_pwr_vol_button
                  ;;
  
 +            --hp-wmi-mediation)
 +                setup_hp_wmi_listener
 +                ;;
 +
-             -?*)
-                 echo "Error: Invalid option $1"
-                 show_help
+             --host-thermal-control)
+                 start_thermal_daemon
+                 ;;
 -- 
 2.17.1
 
