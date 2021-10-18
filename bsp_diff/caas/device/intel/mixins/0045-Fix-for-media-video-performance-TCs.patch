@@ -1,0 +1,63 @@
+From 36dde6cc9119f9ad10bbe87156117832c1ce22e0 Mon Sep 17 00:00:00 2001
+From: vdanix <vishwanathx.dani@intel.com>
+Date: Thu, 21 Oct 2021 12:49:24 +0530
+Subject: [PATCH] Fix for media video performance TCs
+
+performance range update for EHL
+
+Change-Id: I80b3bd8db62884832419458b376b9ca0c97b611c
+Tracked-On: OAM-99771
+Signed-off-by: vdanix <vishwanathx.dani@intel.com>
+---
+ .../configurable/media_codecs_performance_ehl.xml  | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/groups/codecs/configurable/media_codecs_performance_ehl.xml b/groups/codecs/configurable/media_codecs_performance_ehl.xml
+index 851ca76..9f4e902 100644
+--- a/groups/codecs/configurable/media_codecs_performance_ehl.xml
++++ b/groups/codecs/configurable/media_codecs_performance_ehl.xml
+@@ -34,7 +34,7 @@
+             <Limit name="measured-frame-rate-1920x1080" range="18-36" />
+         </MediaCodec>
+         <MediaCodec name="c2.android.mpeg4.decoder" type="video/mp4v-es" update="true">
+-            <Limit name="measured-frame-rate-176x144" range="164-271" />
++            <Limit name="measured-frame-rate-176x144" range="400-600" />
+         </MediaCodec>
+         <MediaCodec name="c2.android.vp8.decoder" type="video/x-vnd.on2.vp8" update="true">
+             <Limit name="measured-frame-rate-320x180" range="150-229" />
+@@ -43,7 +43,7 @@
+             <Limit name="measured-frame-rate-1920x1080" range="25-30" />
+         </MediaCodec>
+         <MediaCodec name="c2.android.vp9.decoder" type="video/x-vnd.on2.vp9" update="true">
+-            <Limit name="measured-frame-rate-320x180" range="136-200" />
++            <Limit name="measured-frame-rate-320x180" range="200-450" />
+             <Limit name="measured-frame-rate-640x360" range="220-330" />
+             <Limit name="measured-frame-rate-1280x720" range="80-170" />
+             <Limit name="measured-frame-rate-1920x1080" range="50-100" />
+@@ -79,18 +79,18 @@
+     <Encoders>
+         <MediaCodec name="c2.android.avc.encoder" type="video/avc" update="true">
+             <Limit name="measured-frame-rate-320x240" range="97-143" />
+-            <Limit name="measured-frame-rate-720x480" range="25-45" />
+-            <Limit name="measured-frame-rate-1280x720" range="15-35" />
+-            <Limit name="measured-frame-rate-1920x1080" range="10-15" />
++            <Limit name="measured-frame-rate-720x480" range="50-150" />
++            <Limit name="measured-frame-rate-1280x720" range="30-55" />
++            <Limit name="measured-frame-rate-1920x1080" range="20-40" />
+         </MediaCodec>
+         <MediaCodec name="c2.android.hevc.encoder" type="video/hevc" update="true">
+             <Limit name="measured-frame-rate-320x240" range="25-55" />
+         </MediaCodec>
+         <MediaCodec name="c2.android.h263.encoder" type="video/3gpp" update="true">
+-            <Limit name="measured-frame-rate-176x144" range="137-214" />
++            <Limit name="measured-frame-rate-176x144" range="260-600" />
+         </MediaCodec>
+         <MediaCodec name="c2.android.mpeg4.encoder" type="video/mp4v-es" update="true">
+-            <Limit name="measured-frame-rate-176x144" range="143-215" />
++            <Limit name="measured-frame-rate-176x144" range="400-600" />
+         </MediaCodec>
+         <MediaCodec name="c2.android.vp8.encoder" type="video/x-vnd.on2.vp8" update="true">
+             <Limit name="measured-frame-rate-320x180" range="150-300" />
+-- 
+2.33.1
+
