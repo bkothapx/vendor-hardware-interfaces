@@ -1,0 +1,109 @@
+From 6621f4f1c97258b7a07db8ba6bc1f4985a8e3643 Mon Sep 17 00:00:00 2001
+From: "Kothapeta, BikshapathiX" <bikshapathix.kothapeta@intel.com>
+Date: Thu, 18 Nov 2021 13:14:30 +0530
+Subject: [PATCH] Update health values for battery
+
+add sysfs read for charge_full and charge_full_design
+to update battery health
+
+Tracked-On:
+Signed-off-by: Kothapeta, BikshapathiX <bikshapathix.kothapeta@intel.com>
+
+diff --git a/health/2.1/HealthImpl.cpp b/health/2.1/HealthImpl.cpp
+index fdf2619..23e1c21 100644
+--- a/health/2.1/HealthImpl.cpp
++++ b/health/2.1/HealthImpl.cpp
+@@ -4,6 +4,7 @@
+ #include <health/utils.h>
+ #include <health2impl/Health.h>
+ #include <hidl/Status.h>
++#include <libhealthd/battery_notifypkt.h>
+ 
+ using ::android::sp;
+ using ::android::hardware::Return;
+@@ -58,9 +59,11 @@ void HealthImpl::UpdateHealthInfo(HealthInfo* health_info) {
+     convertFromHealthInfo(health_info->legacy.legacy, &props);
+     healthd_board_battery_update(&props);
+     convertToHealthInfo(&props, health_info->legacy.legacy);
+-    health_info->batteryCapacityLevel = android::hardware::health::V2_1::BatteryCapacityLevel::UNKNOWN;
+-    health_info->batteryChargeTimeToFullNowSeconds = 0;
+-    health_info->batteryFullChargeDesignCapacityUah = 0;
++    if ( get_battery_mediation_present() == false){
++        health_info->batteryCapacityLevel = android::hardware::health::V2_1::BatteryCapacityLevel::UNKNOWN;
++        health_info->batteryChargeTimeToFullNowSeconds = 0;
++        health_info->batteryFullChargeDesignCapacityUah = 0;
++    }
+ }
+ 
+ }  // namespace implementation
+diff --git a/health/2.1/libhealthd/battery_notifypkt.h b/health/2.1/libhealthd/battery_notifypkt.h
+index ba4bcdf..a6db9d8 100644
+--- a/health/2.1/libhealthd/battery_notifypkt.h
++++ b/health/2.1/libhealthd/battery_notifypkt.h
+@@ -6,7 +6,7 @@
+ #define INTELIPCID "INTELIPC"
+ 
+ using namespace android;
+-
++bool get_battery_mediation_present(void);
+ bool get_battery_properties(android::BatteryProperties *props);
+ 
+ struct header {
+diff --git a/health/2.1/libhealthd/healthd_board_default.cpp b/health/2.1/libhealthd/healthd_board_default.cpp
+index 471b90f..d2dd4fb 100644
+--- a/health/2.1/libhealthd/healthd_board_default.cpp
++++ b/health/2.1/libhealthd/healthd_board_default.cpp
+@@ -21,6 +21,7 @@
+ #include "battery_notifypkt.h"
+ #include <cutils/klog.h>
+ #include <unistd.h>
++#include <string.h>
+ #define HLOG_TAG "android.hardware.health@2.1-impl.intel"
+ #define KLOG_LEVEL 6
+ #define HEALTH_PORT 14196
+@@ -44,6 +45,18 @@ static void parse_battery_status(uint8_t *status)
+         s_props.batteryStatus = android::BATTERY_STATUS_FULL;
+ }
+ 
++static void update_battery_health(struct monitor_pkt *mpkt)
++{
++        if( (mpkt->charge_full == 0) || (mpkt->charge_full_design == 0) ) {
++            s_props.batteryHealth = android::BATTERY_HEALTH_DEAD;
++        }
++        else if ( (((mpkt->charge_full)*100)/mpkt->charge_full_design) >= 80 ) {
++            s_props.batteryHealth = android::BATTERY_HEALTH_GOOD;
++        }
++        else
++            s_props.batteryHealth = android::BATTERY_HEALTH_UNKNOWN;
++}
++
+ static void parse_battery_health(uint8_t *health)
+ {
+     if(!strncmp((char *)health, "Unknown", 7))
+@@ -85,7 +98,12 @@ static void parse_battery_properties(struct monitor_pkt *mpkt)
+     s_props.batteryFullCharge = mpkt->charge_full;
+     s_props.batteryChargeCounter = mpkt->charge_now;
+     parse_battery_status(mpkt->status);
+-    parse_battery_health(mpkt->health);
++    if ( strlen((const char*)mpkt->health) == 0 ){
++	    update_battery_health(mpkt);
++    }
++    else{
++	    parse_battery_health(mpkt->health);
++    }
+ }
+ 
+ static int connect_vsock(int *vsock_fd) {
+@@ -179,3 +197,9 @@ int healthd_board_battery_update(struct android::BatteryProperties *props)
+     }	    
+     return 0;
+ }
++
++bool get_battery_mediation_present(void)
++{
++    return is_vsock_present;
++}
++
+-- 
+2.34.1
+
