@@ -1,0 +1,50 @@
+From 6c91844e263d4cc85f2598048935029db06f54dc Mon Sep 17 00:00:00 2001
+From: vdanix <vishwanathx.dani@intel.com>
+Date: Wed, 1 Dec 2021 18:30:33 +0530
+Subject: [PATCH] [EHL] CTS Media and Video performance range
+
+CTS Media and Video performance range fix
+
+Change-Id: If27993e62e73aa9f9d4ec61f8ecc9db1e45698d8
+Tracked-On: OAM-100209
+Signed-off-by: vdanix <vishwanathx.dani@intel.com>
+---
+ .../codecs/configurable/media_codecs_performance_ehl.xml  | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/groups/codecs/configurable/media_codecs_performance_ehl.xml b/groups/codecs/configurable/media_codecs_performance_ehl.xml
+index 9f4e902..31a188e 100644
+--- a/groups/codecs/configurable/media_codecs_performance_ehl.xml
++++ b/groups/codecs/configurable/media_codecs_performance_ehl.xml
+@@ -17,8 +17,8 @@
+ <MediaCodecs>
+     <Decoders>
+         <MediaCodec name="c2.android.h263.decoder" type="video/3gpp" update="true">
+-            <Limit name="measured-frame-rate-176x144" range="171-261" />
+-            <Limit name="measured-frame-rate-352x288" range="154-232" />
++            <Limit name="measured-frame-rate-176x144" range="350-650" />
++            <Limit name="measured-frame-rate-352x288" range="250-500" />
+         </MediaCodec>
+         <MediaCodec name="c2.android.avc.decoder" type="video/avc" update="true">
+             <Limit name="measured-frame-rate-320x240" range="134-203" />
+@@ -37,7 +37,7 @@
+             <Limit name="measured-frame-rate-176x144" range="400-600" />
+         </MediaCodec>
+         <MediaCodec name="c2.android.vp8.decoder" type="video/x-vnd.on2.vp8" update="true">
+-            <Limit name="measured-frame-rate-320x180" range="150-229" />
++            <Limit name="measured-frame-rate-320x180" range="250-500" />
+             <Limit name="measured-frame-rate-640x360" range="290-320" />
+             <Limit name="measured-frame-rate-1280x720" range="65-70" />
+             <Limit name="measured-frame-rate-1920x1080" range="25-30" />
+@@ -78,7 +78,7 @@
+     </Decoders>
+     <Encoders>
+         <MediaCodec name="c2.android.avc.encoder" type="video/avc" update="true">
+-            <Limit name="measured-frame-rate-320x240" range="97-143" />
++            <Limit name="measured-frame-rate-320x240" range="200-450" />
+             <Limit name="measured-frame-rate-720x480" range="50-150" />
+             <Limit name="measured-frame-rate-1280x720" range="30-55" />
+             <Limit name="measured-frame-rate-1920x1080" range="20-40" />
+--
+2.34.1
+
