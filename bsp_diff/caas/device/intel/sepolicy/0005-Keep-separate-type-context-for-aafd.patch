@@ -1,0 +1,47 @@
+From 35983a7c4f9d3aa720cd317c8d567b02f20acf8a Mon Sep 17 00:00:00 2001
+From: sgnanase <sundar.gnanasekaran@intel.com>
+Date: Fri, 3 Dec 2021 11:12:02 +0530
+Subject: [PATCH] Keep separate type/context for aafd
+
+Tracked-On: OAM-100212
+Signed-off-by: sgnanase <sundar.gnanasekaran@intel.com>
+---
+ aafd/file.te        | 1 +
+ aafd/genfs_contexts | 2 +-
+ aafd/logwrapper.te  | 4 ++--
+ 3 files changed, 4 insertions(+), 3 deletions(-)
+ create mode 100644 aafd/file.te
+
+diff --git a/aafd/file.te b/aafd/file.te
+new file mode 100644
+index 0000000..65ba89f
+--- /dev/null
++++ b/aafd/file.te
+@@ -0,0 +1 @@
++type p9fs2, fs_type, mlstrustedobject;
+diff --git a/aafd/genfs_contexts b/aafd/genfs_contexts
+index ba6edd4..337bf7b 100644
+--- a/aafd/genfs_contexts
++++ b/aafd/genfs_contexts
+@@ -1,2 +1,2 @@
+-genfscon 9p / u:object_r:p9fs:s0
++genfscon 9p / u:object_r:p9fs2:s0
+ genfscon sysfs /class/udc u:object_r:sysfs_usb:s0
+diff --git a/aafd/logwrapper.te b/aafd/logwrapper.te
+index 07ce02f..163e8cb 100644
+--- a/aafd/logwrapper.te
++++ b/aafd/logwrapper.te
+@@ -19,8 +19,8 @@ set_prop(logwrapper, vendor_hwcomposer_prop)
+ set_prop(logwrapper, vendor_usb_controller_prop)
+ set_prop(logwrapper, vendor_fixed_perf_prop)
+ 
+-allow logwrapper p9fs:file r_file_perms;
+-allow logwrapper p9fs:dir r_dir_perms;
++allow logwrapper p9fs2:file r_file_perms;
++allow logwrapper p9fs2:dir r_dir_perms;
+ set_prop(logwrapper, vendor_suspend_prop)
+ set_prop(logwrapper, vendor_intel_ipaddr_prop)
+ set_prop(logwrapper, vendor_graphics_gles_prop)
+-- 
+2.17.1
+
