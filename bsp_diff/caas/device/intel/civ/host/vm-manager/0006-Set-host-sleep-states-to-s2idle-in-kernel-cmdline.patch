@@ -1,0 +1,47 @@
+From 409b1b1900752a69fc45f270deddfd6e6c87beb4 Mon Sep 17 00:00:00 2001
+From: Zhuo Peng <zhuo.peng@intel.com>
+Date: Tue, 7 Dec 2021 14:59:28 +0800
+Subject: [PATCH] Set host sleep states to s2idle in kernel cmdline
+
+CiV suspend/resume function only works properly if host power
+management sleep states is s2idle. To ensure host has the correct
+setting, add "mem_sleep_default=s2idle" to host kernel cmdline
+when setup host.
+
+Tracked-On: OAM-100263
+Signed-off-by: Zhuo Peng <zhuo.peng@intel.com>
+---
+ scripts/setup_host.sh | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/scripts/setup_host.sh b/scripts/setup_host.sh
+index c21585d..ad8a091 100755
+--- a/scripts/setup_host.sh
++++ b/scripts/setup_host.sh
+@@ -172,6 +172,15 @@ function check_kernel_version() {
+     fi
+ }
+
++function check_sleep_states(){
++    local exist=$(sed -En "/^GRUB_CMDLINE_LINUX=.*mem_sleep_default=s2idle.*$/p" /etc/default/grub)
++    if [[ -z "${exist}" ]]; then
++        sed -in "s/^\(GRUB_CMDLINE_LINUX=.*\)\"$/\1 mem_sleep_default=s2idle\"/g" /etc/default/grub
++        update-grub
++        reboot_required=1
++    fi
++}
++
+ function ask_reboot(){
+     if [ $reboot_required -eq 1 ];then
+         read -p "Reboot is required, do you want to reboot it NOW? [y/N]" res
+@@ -436,6 +445,7 @@ parse_arg "$@"
+ check_os
+ check_network
+ check_kernel_version
++check_sleep_states
+
+ ubu_changes_require
+ ubu_install_qemu_gvt
+--
+2.17.1
+
