@@ -1,0 +1,40 @@
+From f5a54de8e5136b65e7aa940f8977708364d9d533 Mon Sep 17 00:00:00 2001
+From: "Kothapeta, BikshapathiX" <bikshapathix.kothapeta@intel.com>
+Date: Mon, 20 Dec 2021 20:14:37 +0530
+Subject: [PATCH] Add Static Sensor Flag in setOperationMode call.
+
+Tracked-On:
+Signed-off-by: Kothapeta, BikshapathiX <bikshapathix.kothapeta@intel.com>
+---
+ sensors/2.0/iiohal_mediation_v2.0/Android.bp | 1 +
+ sensors/2.0/iiohal_mediation_v2.0/Sensors.h  | 3 +++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/sensors/2.0/iiohal_mediation_v2.0/Android.bp b/sensors/2.0/iiohal_mediation_v2.0/Android.bp
+index f4b2098..a13a61f 100644
+--- a/sensors/2.0/iiohal_mediation_v2.0/Android.bp
++++ b/sensors/2.0/iiohal_mediation_v2.0/Android.bp
+@@ -55,5 +55,6 @@ cc_library_static {
+         "-Wno-unused-variable",
+         "-Wno-unused-parameter",
+         "-Wno-unused-function",
++        "-DDISABLE_STATIC_SENSOR_LIST",
+     ],
+ }
+diff --git a/sensors/2.0/iiohal_mediation_v2.0/Sensors.h b/sensors/2.0/iiohal_mediation_v2.0/Sensors.h
+index 933d7c0..4a0ecf0 100644
+--- a/sensors/2.0/iiohal_mediation_v2.0/Sensors.h
++++ b/sensors/2.0/iiohal_mediation_v2.0/Sensors.h
+@@ -96,6 +96,9 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
+     }
+ 
+     Return<Result> setOperationMode(OperationMode mode) override {
++#ifdef DISABLE_STATIC_SENSOR_LIST
++	if(mode == OperationMode::DATA_INJECTION) return Result::OK;
++#endif
+         for (auto sensor : mSensors) {
+             sensor.second->setOperationMode(mode);
+         }
+-- 
+2.34.1
+
